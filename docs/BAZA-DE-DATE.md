@@ -1,6 +1,6 @@
 # Baza de date MySQL
 
-Modelul relațional al bazei `licenta_booking`, utilizată de backend prin biblioteca `mysql2`. Documentul descrie schema; nu conține datele utilizatorilor și nu înlocuiește un script SQL de inițializare.
+Modelul relațional al bazei `licenta_booking`, utilizată de backend prin biblioteca `mysql2`. Schema completă pentru o instalare nouă este în `backend/database/schema.sql`; datele sintetice opționale sunt în `backend/database/demo.sql`. Aceste fișiere nu conțin înregistrări din baza utilizatorului.
 
 ## Logica principală
 
@@ -59,14 +59,14 @@ Toate tabelele folosesc InnoDB. Sunt declarate 10 relații prin chei externe. Ex
 
 ## Conectarea aplicației
 
-`backend/src/config/env.js` încarcă setările private din `backend/.env`. `backend/src/config/db.js` creează conexiunea comună folosind `DB_HOST`, `DB_USER`, `DB_PASSWORD` și `DB_NAME`. Backendul execută SQL și trimite rezultatele ca JSON către frontend. MySQL Workbench este un client separat pentru inspectarea aceleiași baze, nu un intermediar folosit de aplicație.
+`backend/src/config/env.js` încarcă setările private din `backend/.env`. `backend/src/config/db.js` creează pool-ul comun de conexiuni folosind `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_PORT` și `DB_NAME`. Backendul execută SQL și trimite rezultatele ca JSON către frontend. MySQL Workbench este un client separat pentru inspectarea aceleiași baze, nu un intermediar folosit de aplicație.
 
 ## Constrângeri și portabilitate
 
-- Unele chei externe și statusuri acceptă `NULL`; regulile SQL trebuie să țină cont de acest lucru.
-- Schema inspectată nu are constrângeri `CHECK`, iar `rezervari.stripe_session_id` nu are index unic.
-- `promotii.id_hotel` nu are cheie externă sau index. Tabela nu este utilizată de codul API identificat.
-- Interogările folosesc denumiri cu majuscule, iar schema inspectată are nume cu minuscule. Configurația MySQL locală permite această diferență; portarea pe un server sensibil la majuscule necesită uniformizare.
-- Scripturile din `backend/migratii/` sunt modificări istorice și nu recreează întreaga schemă de la zero.
+- Schema unei instalări noi folosește aceleași denumiri de tabele ca interogările, inclusiv pe servere sensibile la majuscule. Baza locală existentă nu este redenumită automat.
+- Unele legături și statusuri acceptă `NULL`; disponibilitatea tratează un status necunoscut ca ocupat. Validarea aplicației verifică intervalele, ID-urile, capacitatea și valorile monetare.
+- Schema nouă include `uq_rezervari_stripe_session`, unic pe `stripe_session_id`, și un index pentru cameră/perioadă. Aceste indexuri nu au fost aplicate bazei existente. Protecția concurenței din cod funcționează prin blocarea camerei pe toate fluxurile de salvare și reactivare; testele verifică și cazul fără index unic.
+- `promotii` este păstrată pentru compatibilitatea schemei. Nu există utilizare identificată în API.
+- Inițializarea refuză o bază care conține deja tabele. Pentru o bază existentă sunt necesare migrări separate, revizuite și susținute de backup.
 
-Limitările calculului disponibilității și ale rezervărilor concurente sunt descrise în [arhitectura aplicației](STRUCTURA.md).
+Detaliile tranzacțiilor, calculului prețurilor și confirmării Stripe sunt descrise în [arhitectura aplicației](STRUCTURA.md).

@@ -22,7 +22,7 @@ Aplicație web pentru căutarea hotelurilor și gestionarea rezervărilor hoteli
 
 ## Rulare locală
 
-Sunt necesare o versiune Node.js compatibilă cu Vite 8, npm și un server MySQL pornit. Repository-ul nu include încă un script complet de inițializare a bazei; baza `licenta_booking`, cu tabelele descrise în [documentația MySQL](docs/BAZA-DE-DATE.md), trebuie pregătită separat. Scripturile istorice din `backend/migratii/` nu sunt suficiente pentru o instalare de la zero.
+Sunt necesare Node.js compatibil cu Vite 8, npm și MySQL 8. Schema completă și datele demonstrative sunt în `backend/database/`. Instalarea pe o bază nouă este descrisă mai jos; baza existentă nu trebuie reinițializată.
 
 Instalează dependențele din rădăcina proiectului:
 
@@ -41,12 +41,13 @@ cp -n backend/.env.example backend/.env
 
 | Variabile | Utilizare |
 | --- | --- |
-| `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Conexiunea MySQL |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Conexiunea MySQL |
 | `JWT_SECRET` | Semnarea și verificarea tokenurilor |
-| `STRIPE_SECRET_KEY` | Integrarea Stripe; folosește chei de test pentru dezvoltare |
-| `EMAIL_USER`, `EMAIL_PASS` | Autentificarea serviciului email |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Opționale: Stripe în modul de test și semnarea webhook-ului |
+| `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM` | Autentificarea și expeditorul emailurilor |
+| `HOST`, `PORT`, `SITE_URL` | Adresa API și adresa frontendului folosită pentru linkuri și redirecturi |
 
-Configurația privată nu se publică; doar `.env.example` este inclus în Git. Valorile din șablon nu permit conectarea la servicii fără configurare. Integrarea Stripe este inițializată la pornirea backendului; plățile și emailurile necesită configurarea serviciilor respective.
+Configurația privată nu se publică; doar `.env.example` este inclus în Git. Valorile din șablon nu permit conectarea la servicii fără configurare. API-ul poate porni fără Stripe; rutele de plată răspund cu 503 până la configurare. Emailurile necesită configurarea contului Gmail. Nu folosi chei de producție pentru dezvoltare.
 
 Pornește backendul și frontendul în terminale separate:
 
@@ -59,6 +60,22 @@ npm run dev --prefix frontend
 ```
 
 Aplicația este disponibilă la **http://localhost:5173**. API-ul rulează pe **http://127.0.0.1:5001**. În dezvoltare, Vite redirecționează cererile `/api` și `/uploads` către backend.
+
+## Inițializarea unei baze noi
+
+Setează `DB_NAME` în configurația locală pentru baza dorită, apoi rulează:
+
+```sh
+npm run db:init --prefix backend -- --confirm-empty-database --demo
+```
+
+Comanda creează schema și un hotel cu camere demonstrative, fără utilizatori sau parole prestabilite. Omite `--demo` pentru schema goală. Utilizatorul MySQL trebuie să aibă drepturile necesare pentru creare. **Dacă baza conține deja tabele, comanda refuză inițializarea.** Nu este un utilitar de migrare a bazei existente.
+
+## Plăți în dezvoltare
+
+Configurează Stripe în modul de test și endpointul `POST /api/plati/webhook` pentru evenimentele `checkout.session.completed` și `checkout.session.async_payment_succeeded`. Completează `STRIPE_WEBHOOK_SECRET` cu secretul de semnare al endpointului. La dezvoltarea locală este necesară redirecționarea evenimentelor Stripe către serverul local.
+
+Totalul și avansul sunt calculate de backend. Confirmarea verifică utilizatorul, suma, moneda și starea plății. Webhook-ul permite confirmarea fără revenirea browserului. Dacă disponibilitatea sau limita reducerii se schimbă în timpul plății, confirmarea inițiază rambursarea în loc să creeze o rezervare suprapusă. Anularea ulterioară a unei rezervări nu inițiază automat rambursarea.
 
 ## Administrare locală
 
@@ -81,9 +98,11 @@ npm run build --prefix frontend
 npm run lint --prefix frontend
 ```
 
-Testele backend obișnuite folosesc o conexiune simulată. `TEST_MYSQL=1` activează suplimentar testele SQL cu date sintetice definite în interogări, fără modificarea tabelelor existente. Necesită MySQL local configurat; testele HTTP folosesc porturi locale temporare.
+Testele obișnuite folosesc baze simulate, un transport email fals și un client Stripe simulat. Semnăturile webhook sunt verificate cu SDK-ul Stripe, fără apeluri de rețea către procesator.
 
-Unele teste documentează explicit defecte existente ale disponibilității și rutării. Trecerea lor confirmă comportamentul actual, nu corectarea acelor defecte. Buildul frontend a fost verificat; lintul are erori existente. Fluxurile complete de plată și email nu sunt acoperite de aceste teste.
+`TEST_MYSQL=1` activează verificările SQL și integrarea tranzacțională. Suita creează o bază temporară `hoteluriro_test_<aleator>`, importă schema și date sintetice, apoi o șterge. Contul MySQL de test trebuie să aibă drepturi `CREATE DATABASE` și `DROP DATABASE`. Testele nu scriu în baza aplicației. Sunt verificate suprapunerile, concurența, confirmările duplicate, reducerile, rollback-ul și inițializarea de la zero.
+
+Testele HTTP folosesc porturi temporare locale. PDF-ul este verificat inclusiv pentru diacritice și accesul proprietarului. Testele nu înlocuiesc verificarea manuală a Stripe și Gmail cu propriile conturi de test. Buildul frontend trece, cu avertismentul de dimensiune a bundle-ului; lintul frontend are probleme existente.
 
 ## Documentație tehnică
 
