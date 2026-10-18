@@ -6,12 +6,12 @@
   "scripts": {
     "test": "node --test",
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "db:init": "node database/init.js"
   },
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@fontsource/roboto": "^5.2.10",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

@@ -1,5 +1,5 @@
 // Rulează o singură dată: node migratii/adauga_poze_hoteluri.js
-const db = require('../src/config/db');
+const db = require('mysql2').createConnection(require('../src/config/database').database());
 
 const U = (id, w = 1200, q = 85) =>
   `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=${q}`;

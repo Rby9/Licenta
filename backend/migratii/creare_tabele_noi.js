@@ -1,5 +1,5 @@
 // node migratii/creare_tabele_noi.js
-const db = require('../src/config/db');
+const db = require('mysql2').createConnection(require('../src/config/database').database());
 
 db.connect(err => {
   if (err) { console.error(err.message); process.exit(1); }

@@ -1,4 +1,4 @@
-const db = require('../src/config/db');
+const db = require('mysql2').createConnection(require('../src/config/database').database());
 
 db.connect(err => {
   if (err) { console.error('Conexiune esuata:', err); process.exit(1); }

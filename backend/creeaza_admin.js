@@ -22,7 +22,7 @@ function validateAdmin({ numeComplet, email, rol, parola }) {
 
 // Conectarea se face numai după validare. Importul fișierului nu accesează DB.
 async function createAdmin(input, {
-    connect = () => require('./src/config/db').promise(),
+    connect = () => require('mysql2/promise').createConnection(require('./src/config/database').database()),
     hash = password => bcrypt.hash(password, 10),
 } = {}) {
     const admin = validateAdmin(input);

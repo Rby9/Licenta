@@ -54,14 +54,16 @@ const cases = [
     ['checkin existent egal cu checkout cerut', [[1, 'confirmata', '2026-11-15', '2026-11-18']], 2],
     ['rezervare inclusă în interval', [[1, 'confirmata', '2026-11-11', '2026-11-13']], 1],
     ['rezervare care acoperă intervalul', [[1, 'confirmata', '2026-11-01', '2026-11-20']], 1],
+    ['status NULL tratat conservator ca ocupat', [[1, null, '2026-11-11', '2026-11-13']], 1],
+    ['cameră NULL în rezervare nu blochează restul camerelor', [[null, 'confirmata', '2026-11-11', '2026-11-13']], 2],
     ['rezervare anulată ignorată', [[1, 'anulata', '2026-11-11', '2026-11-13']], 2],
-    ['caracterizare defect: două sejururi pe aceeași cameră scad de două ori (corect: 1)', [
+    ['aceeași cameră cu două sejururi este numărată o singură dată', [
         [1, 'confirmata', '2026-11-10', '2026-11-12'],
         [1, 'confirmata', '2026-11-13', '2026-11-15'],
-    ], 0],
-    ['caracterizare defect: rezervarea unei camere inactive scade din totalul activ (corect: 2)', [
-        [3, 'confirmata', '2026-11-10', '2026-11-15'],
     ], 1],
+    ['rezervarea unei camere inactive nu reduce totalul activ', [
+        [3, 'confirmata', '2026-11-10', '2026-11-15'],
+    ], 2],
 ];
 for (const [name, bookings, expected] of cases) {
     test(`MySQL disponibilitate: ${name}`, { skip: !enabled }, async () => {

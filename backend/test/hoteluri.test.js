@@ -86,7 +86,7 @@ test('eroare DB la lista hotelurilor: 500', async t => {
 
 test('filtrele căutării păstrează ordinea parametrilor și sortarea', async t => {
     const result = await request(t, '/api/hoteluri/search?checkin=2026-11-01&checkout=2026-11-03&oras=Gala%C8%9Bi&guests=2&stele_exact=4&pret_max=500&facilitati=1,2&sort=pret_asc');
-    assert.deepEqual(result.queries[0].params, ['2026-11-03', '2026-11-01', 'Galați', 4, 2, 1, 2, 2, 500]);
+    assert.deepEqual(result.queries[0].params, ['2026-11-03', '2026-11-01', 'Galați', 4, 2, 500, 1, 2, 2]);
     assert.match(result.queries[0].sql, /ORDER BY pret_minim ASC$/);
 });
 
@@ -95,8 +95,18 @@ test('sortarea necunoscută folosește valoarea implicită', async t => {
     assert.match(result.queries[0].sql, /ORDER BY h\.stele DESC$/);
 });
 
-test('caracterizare defect existent: /cauta este interpretat ca ID de hotel', async t => {
+test('/cauta folosește același serviciu de căutare ca /search', async t => {
     const result = await request(t, '/api/hoteluri/cauta');
-    assert.equal(result.status, 404);
-    assert.deepEqual(result.queries[0].params, ['cauta']);
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body, []);
+    assert.ok(!result.queries[0].sql.includes('WHERE h.id_hotel=?'));
 });
+
+for (const query of ['checkin=2026-02-30&checkout=2026-03-05', 'checkin=2026-11-10',
+    'checkin=2026-11-10&checkout=2026-11-09', 'guests=2abc', 'guests=0', 'pret_max=-1', 'facilitati=1,no']) {
+    test(`căutare invalidă respinsă fără DB: ${query}`, async t => {
+        const result = await request(t, '/api/hoteluri/search?' + query);
+        assert.equal(result.status, 400);
+        assert.equal(result.queries.length, 0);
+    });
+}
