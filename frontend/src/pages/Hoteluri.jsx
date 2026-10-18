@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../api";
 
 // ─── Stele vizuale ─────────────────────────────────────────────────────────
 function Stele({ nr, size = 14 }) {

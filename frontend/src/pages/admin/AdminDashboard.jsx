@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../../api";
 
 const ADMIN_ROLES = ["super_admin", "admin_hotel", "admin_marketing", "admin_booking"];
 

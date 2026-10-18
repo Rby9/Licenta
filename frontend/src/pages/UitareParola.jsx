@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../api";
 
 const LEFT_PANEL = {
   flex: "0 0 54%", position: "relative", overflow: "hidden",

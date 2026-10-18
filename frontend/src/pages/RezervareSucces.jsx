@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../api";
 
 const fmtD = (s) => {
   if (!s) return "—";

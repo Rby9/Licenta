@@ -16,7 +16,7 @@ import imgOradea    from "../assets/Orase/oradea.jpg";
 import imgCraiova   from "../assets/Orase/craiova.jpg";
 import imgArad      from "../assets/Orase/arad.jpg";
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../api";
 
 const IMAGINI_FALLBACK = {
   "Bucuresti":   imgBucuresti,
@@ -671,8 +671,8 @@ export default function Home() {
                   scrollWheelZoom={true}
                 >
                   <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                    attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                    url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
                   <MapController target={mapTarget} />
 

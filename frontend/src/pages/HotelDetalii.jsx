@@ -25,7 +25,7 @@ function MarkerAutoPopup({ position, children }) {
   );
 }
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../api";
 
 // ─── Stele vizuale ─────────────────────────────────────────────────────────
 function Stele({ nr, size = 16 }) {
@@ -738,8 +738,8 @@ export default function HotelDetalii() {
                     scrollWheelZoom={true}
                   >
                     <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
                     <MarkerAutoPopup position={[lat, lng]}>
                       <Popup>

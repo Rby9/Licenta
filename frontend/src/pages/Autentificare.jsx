@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../api";
 
 export default function Autentificare() {
   const navigate = useNavigate();

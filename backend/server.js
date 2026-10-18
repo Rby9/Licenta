@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env'), quiet: true });
 const express    = require('express');
 const mysql      = require('mysql2');
 const cors       = require('cors');
@@ -10,12 +10,19 @@ const path    = require('path');
 const fs      = require('fs');
 
 const app  = express();
-const port = 5000;
+const port = 5001;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 app.use(cors());
 app.use(express.json());
+
+// Adapt legacy local image URLs in responses without changing stored MySQL data.
+app.set('json replacer', (_key, value) =>
+    typeof value === 'string'
+        ? value.replace(/^http:\/\/(?:localhost|127\.0\.0\.1):500[01]\/uploads\//, '/uploads/')
+        : value
+);
 
 // ─── Upload poze hoteluri ──────────────────────────────────────────────────
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -561,7 +568,7 @@ app.post('/api/admin/hoteluri/:id/poze', verificaToken, adminHotel, upload.array
     if (!req.files || req.files.length === 0)
         return res.status(400).json({ eroare: 'Niciun fișier primit.' });
 
-    const urls = req.files.map(f => `http://localhost:5000/uploads/${f.filename}`);
+    const urls = req.files.map(f => `/uploads/${f.filename}`);
     const imagine_url = urls[0] || null;
     const imagine_2   = urls[1] || null;
     const imagine_3   = urls[2] || null;
@@ -793,7 +800,7 @@ app.post('/api/admin/hoteluri/:id/galerie', verificaToken, adminHotel,
 
     const rows = req.files.map((f, i) => [
         req.params.id,
-        `http://localhost:5000/uploads/${f.filename}`,
+        `/uploads/${f.filename}`,
         req.body.titlu || null,
         i
     ]);
@@ -1716,4 +1723,4 @@ app.post('/api/auth/reset-password', async (req, res) => {
     );
 });
 
-app.listen(port, () => console.log(`🚀 Serverul rulează pe http://localhost:${port}`));
+app.listen(port, '127.0.0.1', () => console.log(`🚀 Serverul rulează pe http://localhost:${port}`));

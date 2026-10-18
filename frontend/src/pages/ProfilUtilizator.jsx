@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../api";
 
 // ─── Helper formatare dată ─────────────────────────────────────────────────
 const formatData = (str) => {
