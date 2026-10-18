@@ -189,6 +189,7 @@ export default function HotelDetalii() {
     p.set("categorie_id", camTarget.id_categorie);
     p.set("checkin", wCheckin);
     p.set("checkout", wCheckout);
+    p.set("guests", guestsURL);
     navigate(`/rezervare?${p}`);
   };
 
@@ -681,7 +682,7 @@ export default function HotelDetalii() {
                             e.stopPropagation();
                             setSelectedCam(cam);
                             if (wCheckin && wCheckout) {
-                              const p = new URLSearchParams({ hotel_id: id, categorie_id: cam.id_categorie, checkin: wCheckin, checkout: wCheckout });
+                              const p = new URLSearchParams({ hotel_id: id, categorie_id: cam.id_categorie, checkin: wCheckin, checkout: wCheckout, guests: guestsURL });
                               navigate(`/rezervare?${p}`);
                             } else {
                               window.scrollTo({ top: 0, behavior: "smooth" });

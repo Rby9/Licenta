@@ -77,12 +77,12 @@ export default function Rezervare() {
     return Math.max(0, Math.floor((d2 - d1) / (1000 * 60 * 60 * 24)));
   })();
 
-  const pretBaza   = categorie ? Math.round(categorie.pret_pe_noapte * nopti) : 0;
-  const reducere   = codValidat ? Math.round(pretBaza * codValidat.procent_reducere / 100) : 0;
-  const pretTotal  = pretBaza - reducere;
-  const sumaAvans  = Math.round(pretTotal * 0.30);
-  const comision   = Math.round(pretTotal * 0.10);
-  const sumHotel   = pretTotal - comision;
+  const pretBaza   = categorie ? Math.round(categorie.pret_pe_noapte * 100) * nopti / 100 : 0;
+  const reducere   = codValidat ? Math.round(Math.round(pretBaza * 100) * codValidat.procent_reducere / 100) / 100 : 0;
+  const pretTotal  = Math.round((pretBaza - reducere) * 100) / 100;
+  const sumaAvans  = Math.round(pretTotal * 100 * 0.30) / 100;
+  const comision   = Math.round(pretTotal * 100 * 0.10) / 100;
+  const sumHotel   = Math.round((pretTotal - comision) * 100) / 100;
 
   const valideazaCod = async () => {
     if (!codInput.trim()) return;
@@ -144,6 +144,7 @@ export default function Rezervare() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({
           id_camera, data_checkin: checkin, data_checkout: checkout,
+          guests: Number(searchParams.get("guests") || 1),
           pret_total: pretTotal, nume_hotel: hotel?.nume_hotel,
           tip_camera: categorie?.denumire, nopti,
           id_cod: codValidat?.id_cod || null,
@@ -460,7 +461,7 @@ export default function Rezervare() {
               <div style={s.row}><span style={s.rowLabel}>Check-out</span><span style={s.rowValue}>{checkout ? formatData(checkout) : "—"}</span></div>
               <div style={s.row}><span style={s.rowLabel}>Nopți</span><span style={s.rowValue}>{nopti} {nopti === 1 ? "noapte" : "nopți"}</span></div>
               <div style={s.row}><span style={s.rowLabel}>Capacitate</span><span style={s.rowValue}>până la {categorie.capacitate} persoane</span></div>
-              <div style={s.row}><span style={s.rowLabel}>Preț / noapte</span><span style={s.rowValue}>{Math.round(categorie.pret_pe_noapte)} RON</span></div>
+              <div style={s.row}><span style={s.rowLabel}>Preț / noapte</span><span style={s.rowValue}>{Number(categorie.pret_pe_noapte).toFixed(2)} RON</span></div>
               <div style={s.row}><span style={s.rowLabel}>Subtotal</span><span style={s.rowValue}>{pretBaza.toLocaleString()} RON</span></div>
               {codValidat && (
                 <div style={s.row}>
@@ -468,7 +469,7 @@ export default function Rezervare() {
                   <span style={{ ...s.rowValue, color: "#0f6e56" }}>− {reducere.toLocaleString()} RON</span>
                 </div>
               )}
-              <div style={{ ...s.row, borderBottom: "none" }}><span style={s.rowLabel}>TVA (19%)</span><span style={s.rowValue}>{Math.round(pretTotal * 0.19)} RON</span></div>
+              <div style={{ ...s.row, borderBottom: "none" }}><span style={s.rowLabel}>TVA (19%)</span><span style={s.rowValue}>{(Math.round(pretTotal * 100) - Math.round(pretTotal * 100 / 1.19)) / 100} RON</span></div>
               <div style={s.totalRow}>
                 <span style={s.totalLabel}>TOTAL DE PLATĂ</span>
                 <span style={s.totalValue}>{pretTotal.toLocaleString()} RON</span>
