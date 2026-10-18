@@ -1,8 +1,4 @@
-const mysql = require('mysql2');
-
-const db = mysql.createConnection({
-  host: 'localhost', user: 'root', password: '1234', database: 'licenta_booking'
-});
+const db = require('../src/config/db');
 
 db.connect(err => {
   if (err) { console.error('Conexiune esuata:', err); process.exit(1); }
