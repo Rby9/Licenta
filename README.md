@@ -1,74 +1,91 @@
 # HoteluriRo
 
-Aplicație de rezervări hoteliere pentru proiectul de licență al lui Robert-Andrei Balaban, Universitatea „Dunărea de Jos” din Galați.
+Aplicație web pentru căutarea hotelurilor și gestionarea rezervărilor hoteliere din România.
 
-Interfața este construită cu React și Vite, serverul cu Node.js și Express, iar datele sunt păstrate în MySQL.
+## Funcționalități
 
-## Pornire pe Mac
+- Catalog de hoteluri cu filtre după oraș, stele, preț, facilități și perioadă.
+- Hartă interactivă cu Leaflet și OpenStreetMap.
+- Pagini de hotel cu galerii foto, categorii de camere, disponibilitate și recenzii.
+- Conturi de utilizator, autentificare JWT și resetarea parolei.
+- Rezervări, integrare Stripe, notificări email și generare de documente PDF.
+- Panou de administrare cu acces pe roluri pentru hoteluri, rezervări, utilizatori și oferte.
 
-MySQL trebuie să fie pornit, iar baza `licenta_booking` să fie importată. Configurația privată se află în `backend/.env` și nu se urcă pe GitHub.
+## Tehnologii
 
-Din directorul proiectului, deschide două terminale:
+| Componentă | Tehnologii |
+| --- | --- |
+| Frontend | React 19, Vite 8, React Router, React Leaflet |
+| Backend | Node.js, Express 5, mysql2 |
+| Bază de date | MySQL, InnoDB |
+| Integrări | Stripe, Nodemailer, PDFKit, Multer |
 
-**Terminalul 1 — backend:**
+## Rulare locală
 
-```sh
-npm start --prefix backend
-```
+Sunt necesare o versiune Node.js compatibilă cu Vite 8, npm și un server MySQL pornit. Repository-ul nu include încă un script complet de inițializare a bazei; baza `licenta_booking`, cu tabelele descrise în [documentația MySQL](docs/BAZA-DE-DATE.md), trebuie pregătită separat. Scripturile istorice din `backend/migratii/` nu sunt suficiente pentru o instalare de la zero.
 
-**Terminalul 2 — frontend:**
-
-```sh
-npm run dev --prefix frontend
-```
-
-Deschide **http://localhost:5173**. Lasă ambele terminale pornite. Pentru oprire folosește `Ctrl+C` în terminalul corespunzător.
-
-Backendul folosește `127.0.0.1:5001`; portul 5000 rămâne disponibil pentru AirPlay. Vite trimite cererile `/api` și imaginile `/uploads` către backend.
-
-Dacă apare „Port 5173 is already in use”, există deja un frontend pornit. Folosește instanța existentă sau oprește-o din terminalul ei înainte să pornești alta.
-
-La o instalare nouă, instalează întâi bibliotecile:
+Instalează dependențele din rădăcina proiectului:
 
 ```sh
 npm ci --prefix backend
 npm ci --prefix frontend
 ```
 
-Aceste comenzi nu creează baza MySQL și nici fișierul `.env`. Copia bazei și configurația privată se transferă separat, nu prin GitHub.
-
-## Unde găsești lucrurile
-
-| Loc | Ce conține |
-| --- | --- |
-| `frontend/src/pages/` | Paginile aplicației |
-| `frontend/src/components/` | Elemente reutilizabile: navigare, subsol, notificări |
-| `frontend/src/assets/` | Imagini incluse în interfață |
-| `frontend/src/api.js` | Configurația comună a adresei API |
-| `frontend/vite.config.js` | Serverul de dezvoltare și proxy-ul API |
-| `backend/server.js` | Rutele API și logica serverului, încă într-un singur fișier |
-| `backend/migratii/` | Scripturi istorice pentru modificarea bazei; nu se rulează la pornire |
-| `backend/fonts/` | Fișiere de font; vezi observația despre PDF în documentație |
-| `backend/uploads/` | Imagini încărcate pentru hoteluri |
-| `docs/` | Explicații despre structură, MySQL și Git |
-
-`node_modules/` conține biblioteci instalate de npm. Nu îl edităm și nu îl urcăm pe GitHub. `package.json` descrie bibliotecile și comenzile, iar `package-lock.json` fixează versiunile instalate; ambele se păstrează în Git.
-
-`frontend/dist/` este rezultatul compilării, regenerat cu `npm run build --prefix frontend`. Nu este sursa aplicației și este ignorat de Git.
-
-## Documentație
-
-- [Structura actuală și reorganizarea propusă](docs/STRUCTURA.md)
-- [Baza MySQL: tabele, relații și verificări](docs/BAZA-DE-DATE.md)
-- [GitHub: istoricul existent și commituri clare](docs/GIT.md)
-
-## Verificări rapide
+La prima configurare, copiază șablonul public, apoi completează valorile în `backend/.env`. Comanda păstrează un fișier `.env` care există deja:
 
 ```sh
-curl http://127.0.0.1:5001/api/orase
-curl http://localhost:5173/api/orase
+cp -n backend/.env.example backend/.env
+```
+
+Șablonul conține doar exemple. Completează următoarele variabile cu propriile setări:
+
+| Variabile | Utilizare |
+| --- | --- |
+| `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Conexiunea MySQL |
+| `JWT_SECRET` | Semnarea și verificarea tokenurilor |
+| `STRIPE_SECRET_KEY` | Integrarea Stripe; folosește chei de test pentru dezvoltare |
+| `EMAIL_USER`, `EMAIL_PASS` | Autentificarea serviciului email |
+
+Configurația privată nu se publică; doar `.env.example` este inclus în Git. Valorile din șablon nu permit conectarea la servicii fără configurare. Integrarea Stripe este inițializată la pornirea backendului; plățile și emailurile necesită configurarea serviciilor respective.
+
+Pornește backendul și frontendul în terminale separate:
+
+```sh
+npm start --prefix backend
+```
+
+```sh
+npm run dev --prefix frontend
+```
+
+Aplicația este disponibilă la **http://localhost:5173**. API-ul rulează pe **http://127.0.0.1:5001**. În dezvoltare, Vite redirecționează cererile `/api` și `/uploads` către backend.
+
+## Administrare locală
+
+Pentru crearea unui administrator, rulează într-un terminal interactiv:
+
+```sh
+node backend/creeaza_admin.js
+```
+
+Utilitarul cere numele, emailul, unul dintre rolurile `super_admin`, `admin_hotel`, `admin_booking` sau `admin_marketing` și parola, introdusă fără afișare. Nu există conturi sau parole prestabilite. După confirmare, creează un singur cont în baza configurată prin `backend/.env`; conturile existente nu sunt modificate. Parola este stocată ca hash bcrypt.
+
+Scripturile din `backend/migratii/` modifică schema sau datele și nu trebuie rulate automat la pornire. Necesită verificare și backup înainte de utilizare.
+
+## Verificări
+
+```sh
+npm test --prefix backend
+TEST_MYSQL=1 npm test --prefix backend
 npm run build --prefix frontend
 npm run lint --prefix frontend
 ```
 
-Buildul trece. Lintul are probleme existente documentate în `docs/STRUCTURA.md`; acestea nu sunt încă toate rezolvate.
+Testele backend obișnuite folosesc o conexiune simulată. `TEST_MYSQL=1` activează suplimentar testele SQL cu date sintetice definite în interogări, fără modificarea tabelelor existente. Necesită MySQL local configurat; testele HTTP folosesc porturi locale temporare.
+
+Unele teste documentează explicit defecte existente ale disponibilității și rutării. Trecerea lor confirmă comportamentul actual, nu corectarea acelor defecte. Buildul frontend a fost verificat; lintul are erori existente. Fluxurile complete de plată și email nu sunt acoperite de aceste teste.
+
+## Documentație tehnică
+
+- [Arhitectură, structură și limitări](docs/STRUCTURA.md)
+- [Modelul bazei de date](docs/BAZA-DE-DATE.md)

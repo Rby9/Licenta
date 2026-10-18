@@ -262,14 +262,14 @@ export default function Hoteluri() {
     rangeInput: {
       width: "100%", accentColor: "#C4A050", cursor: "pointer",
     },
-    dateInput: (f) => ({
+    dateInput: {
       width: "100%", fontFamily: "'Jost',sans-serif",
       fontSize: "0.85rem", color: "#0A0E23",
       border: "1px solid rgba(196,160,80,0.2)",
       borderRadius: "2px", padding: "8px 10px",
       outline: "none", background: "#FDFBF8",
       boxSizing: "border-box",
-    }),
+    },
     facTag: (activ) => ({
       fontFamily: "'Jost',sans-serif", fontSize: "0.72rem",
       fontWeight: 500, letterSpacing: "0.04em",
@@ -535,19 +535,19 @@ export default function Hoteluri() {
             <label style={s.filterLabel}>Disponibilitate</label>
             <div style={{ marginBottom: "8px" }}>
               <label style={{ ...s.filterLabel, fontSize: "0.62rem", marginBottom: "4px" }}>Check-in</label>
-              <input type="date" style={s.dateInput("cin")}
+              <input type="date" style={s.dateInput}
                 value={checkin} min={new Date().toISOString().split("T")[0]}
                 onChange={e => setCheckin(e.target.value)} />
             </div>
             <div style={{ marginBottom: "8px" }}>
               <label style={{ ...s.filterLabel, fontSize: "0.62rem", marginBottom: "4px" }}>Check-out</label>
-              <input type="date" style={s.dateInput("cout")}
+              <input type="date" style={s.dateInput}
                 value={checkout} min={checkin || new Date().toISOString().split("T")[0]}
                 onChange={e => setCheckout(e.target.value)} />
             </div>
             <div>
               <label style={{ ...s.filterLabel, fontSize: "0.62rem", marginBottom: "4px" }}>Persoane</label>
-              <input type="number" style={s.dateInput("g")}
+              <input type="number" style={s.dateInput}
                 value={guests} min={1} max={10} placeholder="ex: 2"
                 onChange={e => setGuests(e.target.value)} />
             </div>

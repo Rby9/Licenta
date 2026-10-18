@@ -1,62 +1,65 @@
-# Structura proiectului
+# Arhitectura aplicației
 
-## Cum circulă o cerere
+## Fluxul unei cereri
 
 ```mermaid
 flowchart LR
-    A[Browser · React :5173] --> B[Proxy Vite]
-    B --> C[Express :5001]
-    C --> D[(MySQL · licenta_booking)]
-    C --> E[Imagini din uploads]
+    A[React · localhost:5173] -->|HTTP /api| B[Proxy Vite]
+    B --> C[Express · 127.0.0.1:5001]
+    C -->|mysql2 · SQL| D[(MySQL)]
+    C --> E[Fișiere din uploads]
 ```
 
-React afișează informațiile. Express verifică cererea și citește/scrie în MySQL. Browserul nu se conectează direct la baza de date.
+React trimite cereri HTTP și afișează răspunsurile JSON. Express execută interogările SQL prin `mysql2`. Frontendul nu accesează direct baza de date. Imaginile încărcate sunt servite din directorul `backend/uploads/`; MySQL păstrează referințele către ele.
 
-## Ce păstrăm și de ce
-
-- `node_modules`: biblioteci terțe, regenerate cu npm. Nu reprezintă cod scris pentru licență.
-- `migratii`: modificări istorice ale structurii bazei. Unele au configurație DB hardcodată; trebuie revizuite înainte de folosire. Nu sunt un sistem complet, ordonat și versionat de migrare.
-- `fonts`: există un font Roboto local, dar generatorul PDF din `server.js` folosește încă două căi absolute Windows către Arial. Generarea PDF pe Mac necesită o reparație separată, cu fonturi portabile și verificarea diacriticelor.
-- `uploads`: fișiere asociate hotelurilor. Un backup al bazei nu include automat aceste imagini. O imagine referită de hotelul 1 lipsește din copia locală.
-- `.env`: configurație privată; rămâne local și este ignorată de Git.
-
-## Reorganizare propusă, încă neimplementată
+## Structura actuală
 
 ```text
 backend/
-  server.js                 # pornirea serverului
+  server.js                 # Express, autentificare, rezervări, administrare și integrări
   src/
-    app.js                  # configurarea Express
-    config/                 # mediu și conexiune DB
-    middleware/             # autentificare și tratarea erorilor
+    config/
+      env.js                # încărcarea backend/.env
+      db.js                 # conexiunea MySQL comună
     modules/
-      hoteluri/             # rute, interogări, disponibilitate
-      rezervari/
-      autentificare/
-      administrare/
-    services/               # email, PDF, plăți
-  migratii/                 # viitoare migrări numerotate și documentate
-frontend/src/
-  pages/                    # pagini care compun componente
-  components/               # componente comune
-  features/                 # componente și hook-uri specifice unei funcții
+      hoteluri/
+        routes.js           # catalog, căutare, hartă și disponibilitate
+  test/                     # teste de rutare și verificări SQL
+  migratii/                 # scripturi istorice de modificare a bazei
+  fonts/                    # resurse de font
+  uploads/                  # imagini încărcate
+frontend/
+  src/
+    pages/                  # paginile publice și panoul de administrare
+    components/             # navigare, notificări și componente comune
+    assets/                 # imagini incluse în aplicație
+    api.js                  # adresa de bază pentru cererile API
+  public/                   # resurse statice
+  vite.config.js            # dezvoltare și proxy către backend
 ```
 
-Nu mutăm totul simultan. Extragem un domeniu, verificăm aceleași răspunsuri API și aceeași interfață, apoi facem un commit. Modificările logicii se păstrează separat de simpla mutare a codului.
+`server.js` încarcă configurația, pornește conexiunea DB și înregistrează rutele. Modulul hoteluri primește aceeași conexiune prin parametrul `db`, ceea ce permite verificarea rutelor cu o conexiune simulată. Majoritatea celorlalte domenii sunt încă implementate în `server.js`.
 
-## Ordinea recomandată
+`backend/creeaza_admin.js` este utilitarul interactiv de creare a unui administrator. Acesta și scripturile din `migratii/` folosesc conexiunea comună configurată prin `backend/.env` și sunt independente de pornirea aplicației. Migrările istorice nu constituie un sistem complet de inițializare sau migrare a bazei.
 
-1. Checkpoint al variantei funcționale și documentație clară.
-2. Extragerea configurației DB și a modulului hoteluri/disponibilitate; teste pentru intervale și camere ocupate.
-3. Corectarea disponibilității și verificarea rezervărilor concurente, fără a modifica rezervările existente.
-4. Extragerea componentelor mari din dashboardul admin și pagina hotelului; remedierea lintului.
-5. Retușuri vizuale: spațiere, tipografie, butoane și formulare consecvente, stări de încărcare/eroare și afișare pe mobil. Păstrăm direcția cromatică bleumarin–auriu; comparăm vizual fiecare pagină modificată.
-6. Chatbot pentru disponibilitate, bazat pe același serviciu folosit de căutare. Cere hotel/oraș, perioada și numărul de persoane; nu inventează camere disponibile.
+## Disponibilitatea camerelor
 
-## Verificări existente
+O cameră este ocupată dacă o rezervare neanulată se suprapune cu perioada căutată:
 
-Buildul frontend trece; bundle-ul principal depășește 500 kB. Încărcarea paginilor la cerere poate fi introdusă separat.
+```text
+rezervare.checkin < cerere.checkout
+AND rezervare.checkout > cerere.checkin
+```
 
-Ultima rulare ESLint a raportat 34 de erori și 7 avertismente. Buildul reușit nu înseamnă că aceste probleme au fost rezolvate.
+Checkout-ul este exclus din interval: un sejur poate începe în ziua în care se termină altul. Testele MySQL verifică limitele intervalelor, suprapunerile și rezervările anulate, folosind camere și rezervări sintetice definite în CTE-uri, fără scrieri în baza existentă.
 
-Rutele publice pentru orașe, hoteluri, hartă, oferte și disponibilitate au fost verificate prin cereri de citire. Nu au fost testate în această etapă toate fluxurile de autentificare, plăți, email sau administrare.
+## Limitări cunoscute
+
+- Disponibilitatea pe categorie poate scădea aceeași cameră de mai multe ori și poate include în scădere rezervările camerelor inactive. Testele de caracterizare reproduc aceste defecte.
+- `/api/hoteluri/cauta` este interceptată de ruta `/:id`. Frontendul folosește `/api/hoteluri/search`. Căutările nu aplică încă reguli identice pentru preț și camere disponibile; validarea parametrilor este incompletă.
+- Verificarea disponibilității și salvarea rezervării nu sunt protejate împreună prin tranzacții și blocare; rezervările concurente nu sunt garantate fără suprapuneri.
+- Generatorul PDF folosește căi absolute Windows pentru fonturile Arial. Fontul local nu este conectat la generator, astfel că generarea PDF nu este portabilă în forma actuală.
+- O imagine referită de baza locală lipsește. Fișierele încărcate și baza de date necesită copii de siguranță separate.
+- Frontendul are probleme ESLint existente, iar buildul raportează un bundle principal de peste 500 kB. Testele actuale nu acoperă integral autentificarea, administrarea, plățile și emailurile.
+
+Fișierele `.env`, dependențele instalate și rezultatele de build sunt excluse din Git. Baza MySQL reală și configurația privată nu sunt incluse în repository.

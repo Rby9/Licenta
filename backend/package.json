@@ -1,15 +1,13 @@
 {
-  "name": "backend",
+  "name": "hoteluriro-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "API Express pentru catalogul hotelurilor, utilizatori și rezervări HoteluriRo.",
+  "main": "server.js",
   "scripts": {
     "test": "node --test",
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
@@ -24,5 +22,6 @@
     "nodemailer": "^8.0.7",
     "pdfkit": "^0.18.0",
     "stripe": "^22.1.0"
-  }
+  },
+  "private": true
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
-import { useToast } from "../components/Toast";
+import { useToast } from "../components/ToastContext";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -60,7 +60,6 @@ export default function HotelDetalii() {
   // ── State UI ────────────────────────────────────────────────────────────
   const [hovCard, setHovCard]   = useState(null);
   const [hovBtn, setHovBtn]     = useState(null);
-  const [imgError, setImgError]   = useState(false);
   const [pozaActiva, setPozaActiva] = useState(0); // index slider
   const [galerie, setGalerie]           = useState([]);
   const [galerieLoading, setGalLoading] = useState(true);
@@ -84,7 +83,6 @@ export default function HotelDetalii() {
   // ── Booking widget ─────────────────────────────────────────────────────
   const [wCheckin, setWCheckin]   = useState(checkinURL);
   const [wCheckout, setWCheckout] = useState(checkoutURL);
-  const [wGuests, setWGuests]     = useState(guestsURL || "2");
   const [selectedCam, setSelectedCam] = useState(null);
 
   // ── Fetch hotel + categorii camere ─────────────────────────────────────
@@ -174,18 +172,6 @@ export default function HotelDetalii() {
   };
   const nopti = calcNopti(checkinURL, checkoutURL);
 
-  // ── Navighează spre rezervare ──────────────────────────────────────────
-  const handleRezervare = (categorieId) => {
-    const params = new URLSearchParams({
-      hotel_id:    id,
-      categorie_id: categorieId,
-      checkin:     checkinURL,
-      checkout:    checkoutURL,
-      guests:      guestsURL,
-    });
-    navigate(`/rezervare?${params}`);
-  };
-
   const handleWidgetSearch = () => {
     if (!wCheckin || !wCheckout) {
       addToast("Alege datele de check-in și check-out.", "error");
@@ -217,7 +203,7 @@ export default function HotelDetalii() {
     },
     heroImg: {
       width: "100%", height: "100%", objectFit: "cover",
-      display: "block", opacity: imgError ? 0 : 1,
+      display: "block", opacity: 1,
       transition: "opacity .3s",
     },
     heroOverlay: {

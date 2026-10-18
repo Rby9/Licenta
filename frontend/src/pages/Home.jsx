@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -198,11 +198,6 @@ export default function Home() {
     const centru = CENTRU_ORAS[oras.nume_oras];
     if (centru) setMapTarget(centru);
   };
-
-  // Hoteluri pentru orașul activ (sau toate dacă nimic selectat)
-  const hoteluriFiltrate = orasActiv
-    ? hoteluri.filter(h => h.id_oras === orasActiv)
-    : hoteluri;
 
   const s = {
     page: { minHeight: "100vh", background: "#F8F6F1", overflowX: "hidden" },

@@ -216,7 +216,6 @@ export default function AdminDashboard() {
   const [hoteluri, setHoteluri]     = useState([]);
   const [orase, setOrase]           = useState([]);
   const [utilizatori, setUtilizatori] = useState([]);
-  const [loading, setLoading]       = useState({});
   const [eroare, setEroare]         = useState("");
   const [succes, setSucces]         = useState("");
 
@@ -230,7 +229,6 @@ export default function AdminDashboard() {
   const [editingCat, setEditingCat]   = useState(null);
   const [editingCatForm, setEditingCatForm] = useState({});
   const [focusField, setFocus]        = useState(null);
-  const [hovBtn, setHovBtn]           = useState(null);
   const [filtruRez, setFiltruRez]     = useState("toate");
   const [cautareRez, setCautareRez]   = useState("");
   const [expandedHotel, setExpanded]  = useState(null);
@@ -246,7 +244,6 @@ export default function AdminDashboard() {
   const [galeriFisiere, setGaleriFisiere] = useState([]);
   const [galeriPreview, setGaleriPreview] = useState([]);
   const [galerie, setGalerie]             = useState({}); // { id_hotel: [poze] }
-  const [galeriHotelActiv, setGaleriHotelActiv] = useState(null);
   const [uploadingGalerie, setUploadingGalerie] = useState(false);
 
   // ── Filtru dashboard ───────────────────────────────────────────────────
@@ -320,11 +317,10 @@ export default function AdminDashboard() {
   };
 
   const fetchRezervari = async () => {
-    setLoading(l => ({ ...l, rez: true }));
     try {
       const res = await fetch(`${API_URL}/api/admin/rezervari`, { headers });
       if (res.ok) setRezervari(await res.json());
-    } catch {} finally { setLoading(l => ({ ...l, rez: false })); }
+    } catch {}
   };
 
   const fetchHoteluri = async () => {
@@ -431,7 +427,7 @@ export default function AdminDashboard() {
       }
       setHoteluri(prev => prev.map(h => h.id_hotel === idHotel ? { ...h, oferta_activa: h.oferta_activa ? 0 : 1 } : h));
       showSucces("Ofertă actualizată!");
-    } catch (err) {
+    } catch {
       showEroare("Eroare de rețea la actualizarea ofertei.");
     }
   };

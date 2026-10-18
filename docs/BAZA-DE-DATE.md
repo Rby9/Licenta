@@ -1,6 +1,6 @@
 # Baza de date MySQL
 
-Audit local din 19 octombrie 2026, făcut prin SELECT și metadatele MySQL. Nu au fost modificate schema sau datele. Acest document descrie structura; nu este un backup al înregistrărilor.
+Modelul relațional al bazei `licenta_booking`, utilizată de backend prin biblioteca `mysql2`. Documentul descrie schema; nu conține datele utilizatorilor și nu înlocuiește un script SQL de inițializare.
 
 ## Logica principală
 
@@ -42,30 +42,6 @@ Diagrama arată relațiile de domeniu. În schema actuală, unele chei externe a
 
 Toate tabelele folosesc InnoDB. Sunt declarate 10 relații prin chei externe. Există unicitate pentru email, numele orașului, codul promoțional și perechea hotel–utilizator pentru recenzii.
 
-## Rezultatul verificărilor datelor
-
-| Verificare | Rezultat |
-| --- | --- |
-| Rezervări cu checkout ≤ checkin, preț negativ sau cameră/utilizator NULL | 0 |
-| Perechi de rezervări neanulate suprapuse pe aceeași cameră | 0 |
-| Sesiuni de plată nenule și nevidate duplicate | 0 |
-| Categorii cu capacitate ≤ 0, preț negativ sau hotel NULL | 0 |
-| Înregistrări în `promotii` | 0 |
-
-Aceste rezultate descriu datele actuale, nu demonstrează că aplicația previne toate erorile viitoare. Verificarea suprapunerilor folosește aceeași condiție de status ca API-ul (`!= 'anulata'`); statusurile NULL nu sunt incluse de această condiție SQL.
-
-## Ce trebuie îmbunătățit
-
-- `promotii.id_hotel` nu are cheie externă sau index; tabela este goală și nu apare folosită în server. Clarificăm dacă se păstrează sau se consolidează cu ofertele înainte de orice eliminare.
-- `rezervari.stripe_session_id` nu are index unic. Confirmările concurente de plată trebuie protejate în DB și în cod.
-- Nu există constrângeri CHECK. Sunt utile pentru intervale valide, prețuri, capacitate, rating și procente, după stabilirea regulilor exacte.
-- Unele legături și statusuri acceptă NULL. Verificăm dacă acest lucru este intenționat înainte să le facem obligatorii.
-- Calculul disponibilității pe categorie scade numărul rezervărilor. Aceeași cameră cu două rezervări distincte în interval poate fi scăzută de două ori; camerele inactive trebuie tratate consecvent.
-- Pentru rezervări concurente, verificarea și crearea rezervării trebuie proiectate împreună, într-o tranzacție cu blocarea potrivită. Un index obișnuit nu împiedică singur suprapunerile de intervale.
-- MySQL local folosește `lower_case_table_names=2`; codul are denumiri cu majuscule, schema este raportată cu minuscule. Uniformizăm interogările pentru portabilitate înainte de mutarea pe un sistem sensibil la majuscule.
-
-Nu se aplică automat niciuna dintre aceste schimbări. Mai întâi pregătim o migrare, o verificăm pe o copie a bazei și păstrăm un backup separat al datelor și imaginilor. Git păstrează codul și migrările, nu baza MySQL activă.
-
 ## Relațiile declarate
 
 | Tabel și coloană | Referință |
@@ -80,3 +56,17 @@ Nu se aplică automat niciuna dintre aceste schimbări. Mai întâi pregătim o 
 | `recenzii.id_utilizator` | `utilizatori.id_utilizator` |
 | `rezervari.id_utilizator` | `utilizatori.id_utilizator` |
 | `rezervari.id_camera` | `camere.id_camera` |
+
+## Conectarea aplicației
+
+`backend/src/config/env.js` încarcă setările private din `backend/.env`. `backend/src/config/db.js` creează conexiunea comună folosind `DB_HOST`, `DB_USER`, `DB_PASSWORD` și `DB_NAME`. Backendul execută SQL și trimite rezultatele ca JSON către frontend. MySQL Workbench este un client separat pentru inspectarea aceleiași baze, nu un intermediar folosit de aplicație.
+
+## Constrângeri și portabilitate
+
+- Unele chei externe și statusuri acceptă `NULL`; regulile SQL trebuie să țină cont de acest lucru.
+- Schema inspectată nu are constrângeri `CHECK`, iar `rezervari.stripe_session_id` nu are index unic.
+- `promotii.id_hotel` nu are cheie externă sau index. Tabela nu este utilizată de codul API identificat.
+- Interogările folosesc denumiri cu majuscule, iar schema inspectată are nume cu minuscule. Configurația MySQL locală permite această diferență; portarea pe un server sensibil la majuscule necesită uniformizare.
+- Scripturile din `backend/migratii/` sunt modificări istorice și nu recreează întreaga schemă de la zero.
+
+Limitările calculului disponibilității și ale rezervărilor concurente sunt descrise în [arhitectura aplicației](STRUCTURA.md).

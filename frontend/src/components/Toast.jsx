@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 
-const ToastCtx = createContext(null);
+import { ToastContext } from "./ToastContext";
 
 const COLORS = {
   success: { border: "rgba(196,160,80,.5)",  accent: "#C4A050", icon: "✓" },
@@ -78,11 +78,9 @@ export function ToastProvider({ children }) {
   }, []);
 
   return (
-    <ToastCtx.Provider value={addToast}>
+    <ToastContext.Provider value={addToast}>
       {children}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-    </ToastCtx.Provider>
+    </ToastContext.Provider>
   );
 }
-
-export const useToast = () => useContext(ToastCtx);

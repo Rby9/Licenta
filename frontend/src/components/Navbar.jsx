@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useToast } from "./Toast";
+import { useToast } from "./ToastContext";
 
 const injectGlobalStyles = () => {
   if (document.getElementById("hoteluri-global-styles")) return;
