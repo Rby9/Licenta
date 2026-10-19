@@ -15,9 +15,9 @@ async function fixture(t, execute, query = () => assert.fail('Interogare callbac
     const server = app.listen(0, '127.0.0.1');
     await new Promise(resolve => server.once('listening', resolve));
     t.after(() => new Promise(resolve => server.close(resolve)));
-    return { sent, request: async (path, body, token) => {
+    return { sent, request: async (path, body, token, method) => {
         const result = await fetch(`http://127.0.0.1:${server.address().port}${path}`, {
-            method: body === undefined ? 'GET' : 'POST',
+            method: method || (body === undefined ? 'GET' : 'POST'),
             headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
             ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         });
@@ -133,3 +133,46 @@ test('numele utilizatorului nu poate injecta HTML în emailul de bun venit', asy
     assert.ok(!sent.html.includes('<img src=x'));
     assert.ok(sent.html.includes('&lt;img'));
 });
+
+
+test('profilul respinge telefonul invalid și consimțământul ambiguu înainte de UPDATE', async t => {
+    const app = await fixture(t, async sql => {
+        assert.ok(!sql.startsWith('UPDATE'));
+        return [[{ id_utilizator: 1, rol: 'client' }]];
+    });
+    const token = jwt.sign({ id: 1 }, 'unit-test-secret');
+    for (const body of [
+        { nume_complet: 'Test', telefon: {} },
+        { nume_complet: 'Test', telefon: '1'.repeat(21) },
+        { nume_complet: 'Test', email_marketing: 'false' },
+    ]) assert.equal((await app.request('/api/auth/profil', body, token, 'PATCH')).status, 400);
+});
+
+test('profilul salvează consimțământul false ca zero și returnează câmpurile publice', async t => {
+    let saved;
+    const app = await fixture(t, async (sql, params) => {
+        if (sql.startsWith('UPDATE')) { saved = params; return [{ affectedRows: 1 }]; }
+        return [[{ id_utilizator: 1, rol: 'client', nume_complet: 'Test', email_marketing: 0 }]];
+    });
+    const result = await app.request('/api/auth/profil', { nume_complet: ' Test ', telefon: '', email_marketing: false },
+        jwt.sign({ id: 1 }, 'unit-test-secret'), 'PATCH');
+    assert.equal(result.status, 200);
+    assert.deepEqual(saved, ['Test', null, 0, 1]);
+    assert.equal(result.body.utilizator.email_marketing, 0);
+});
+
+for (const path of ['/api/auth/me', '/api/auth/profil']) {
+    test(`${path}: eroarea DB este 500, fără detalii SQL sau succes fals`, async t => {
+        t.mock.method(console, 'error', () => {});
+        const app = await fixture(t, async sql => {
+            if (sql.includes('SELECT id_utilizator,rol')) return [[{ id_utilizator: 1, rol: 'client' }]];
+            if (sql.startsWith('UPDATE')) return [{ affectedRows: 1 }];
+            throw new Error('SQL detalii private');
+        });
+        const result = await app.request(path, path.endsWith('profil') ? { nume_complet: 'Test' } : undefined,
+            jwt.sign({ id: 1 }, 'unit-test-secret'), path.endsWith('profil') ? 'PATCH' : 'GET');
+        assert.equal(result.status, 500);
+        assert.ok(!JSON.stringify(result.body).includes('SQL'));
+        assert.equal(result.body.mesaj, undefined);
+    });
+}

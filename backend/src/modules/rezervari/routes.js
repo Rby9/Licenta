@@ -1,3 +1,4 @@
+const { sendNotification } = require('../../services/notifications');
 const { escapeHTML } = require('../../services/html');
 const { genereazaPDFBuffer } = require('../../services/pdf');
 
@@ -54,7 +55,7 @@ function registerRoutes(app, { db, verificaToken, ADMIN_ROLES, emailTransporter,
 
                 // Email confirmare anulare
                 const fmtD = (s) => s ? new Date(s).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
-                emailTransporter.sendMail({
+                sendNotification(() => emailTransporter.sendMail({
                     from: EMAIL_FROM,
                     to:      r.email,
                     subject: `Rezervare #${r.id_rezervare} anulată — HoteluriRo`,
@@ -81,7 +82,7 @@ function registerRoutes(app, { db, verificaToken, ADMIN_ROLES, emailTransporter,
                         <p style="color:#aaa;font-size:0.8rem;margin:0">© 2025 HoteluriRo</p>
                       </div>
                     </div>`,
-                }).catch(e => console.error('Email anulare:', e.message));
+                }), 'Email anulare indisponibil.');
 
                 res.json({ mesaj: 'Rezervare anulată cu succes.' });
             }).catch(error => res.status(error.status || 500).json({ eroare: error.status ? error.message : 'Eroare la anulare.' }));
@@ -133,7 +134,7 @@ module.exports = { registerRoutes };
 function registerCreation(app, { verificaToken, bookings, notify }) {
     const create = async (req, res) => {
         const reservation = await bookings.book(req.user.id, req.body);
-        Promise.resolve(notify(reservation)).catch(() => console.error('Email confirmare indisponibil.'));
+        sendNotification(() => notify(reservation), 'Email confirmare indisponibil.');
         res.status(201).json({ ...reservation, mesaj: 'Rezervare creată cu succes!' });
     };
     app.post('/api/rezervari', verificaToken, create);

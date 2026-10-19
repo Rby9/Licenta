@@ -61,7 +61,7 @@ Prețurile sunt calculate în bani întregi din tariful DB și numărul nopțilo
 
 Sesiunea Stripe conține oferta calculată de server. Confirmarea verifică proprietarul, starea plății, suma, moneda și eventualele rambursări. Confirmările concurente sunt serializate pe camera asociată; o sesiune deja salvată returnează aceeași rezervare. Schema pentru instalări noi include și un index unic pentru sesiunea Stripe.
 
-Webhook-ul verifică semnătura pe corpul brut al cererii și folosește același serviciu de confirmare ca browserul. Conflictele de disponibilitate sau reducere după o plată reușită inițiază un refund cu cheie idempotentă. Erorile tehnice rămân reîncercabile. Emailul este trimis după salvare și nu condiționează tranzacția.
+Webhook-ul verifică semnătura pe corpul brut al cererii și folosește același serviciu de confirmare ca browserul. Conflictele de disponibilitate sau reducere după o plată reușită inițiază un refund cu cheie idempotentă. Erorile tehnice rămân reîncercabile. Emailul este trimis după salvare și nu condiționează tranzacția. O eroare de email nu transformă o rezervare sau anulare salvată într-un răspuns de eroare. Notificările eșuate sunt înregistrate în log; nu există încă o coadă persistentă pentru retrimitere.
 
 Nu sunt blocate camere pentru întreaga durată a checkout-ului. Două checkout-uri pot ajunge la plată, dar numai rezervarea eligibilă este salvată; cealaltă plată este rambursată la confirmare. Sesiunile create înainte de versiunea actuală, plătite dar încă nesalvate, necesită verificare manuală.
 

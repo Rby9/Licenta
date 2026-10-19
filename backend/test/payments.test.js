@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { createPaymentService } = require('../src/services/payments');
 const { HttpError } = require('../src/services/errors');
 
-function fixture({ owner = 1, paid = true, amount = 39998, refunded = false, existing = [], failure } = {}) {
+function fixture({ owner = 1, paid = true, amount = 39998, refunded = false, existing = [], failure, notify } = {}) {
     const calls = { books: [], refunds: [], checkout: [] };
     const session = { id: 'cs_test_session', payment_status: paid ? 'paid' : 'unpaid', currency: 'ron', amount_total: amount,
         payment_intent: 'pi_test', metadata: { booking_version: '1', id_utilizator: String(owner), id_camera: '1',
@@ -21,7 +21,7 @@ function fixture({ owner = 1, paid = true, amount = 39998, refunded = false, exi
         refunds: { create: async (...args) => { calls.refunds.push(args); return { id: 're_test' }; } },
     };
     const db = { promise: () => ({ execute: async () => [existing] }) };
-    const service = createPaymentService({ stripe, bookings, db, config: { siteUrl: 'http://localhost:5173' } });
+    const service = createPaymentService({ stripe, bookings, db, config: { siteUrl: 'http://localhost:5173' }, notify });
     return { service, calls, session };
 }
 
@@ -81,4 +81,15 @@ test('moneda diferită este respinsă', async () => {
     session.currency = 'eur';
     await assert.rejects(service.confirm('cs_test_session', 1), e => e.status === 409);
     assert.equal(calls.books.length, 0);
+});
+
+
+test('emailul eșuat după confirmarea plății nu produce eroare sau refund', async t => {
+    t.mock.method(console, 'error', () => {});
+    const { service, calls } = fixture({ notify: () => { throw new Error('Email indisponibil'); } });
+    const result = await service.confirm('cs_test_session', 1);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(result.id_rezervare, 5);
+    assert.equal(calls.books.length, 1);
+    assert.equal(calls.refunds.length, 0);
 });

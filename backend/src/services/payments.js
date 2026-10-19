@@ -1,3 +1,4 @@
+const { sendNotification } = require('./notifications');
 const { HttpError } = require('./errors');
 const { reservationView } = require('./reservation-view');
 const { integer } = require('./validation');
@@ -74,7 +75,7 @@ function createPaymentService({ stripe, bookings, db, config, notify = async () 
             }
             throw error;
         }
-        if (!reservation.duplicate) Promise.resolve(notify(reservation)).catch(() => console.error('Email confirmare indisponibil.'));
+        if (!reservation.duplicate) sendNotification(() => notify(reservation), 'Email confirmare indisponibil.');
         return reservation;
     }
     return { checkout, confirm };

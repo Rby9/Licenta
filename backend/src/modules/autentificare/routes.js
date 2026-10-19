@@ -1,3 +1,4 @@
+const { sendNotification } = require('../../services/notifications');
 const { HttpError } = require('../../services/errors');
 function validatePassword(password) {
     if (typeof password !== 'string' || password.length < 6 || Buffer.byteLength(password, 'utf8') > 72) {
@@ -8,6 +9,15 @@ function validateCredentials(email, password, registering = true) {
     if (typeof email !== 'string' || email.trim().length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) throw new HttpError(400, 'Email invalid.');
     if (registering) validatePassword(password);
     else if (typeof password !== 'string' || !password || Buffer.byteLength(password, 'utf8') > 72) throw new HttpError(400, 'Parolă invalidă.');
+}
+function validateProfile({ nume_complet, telefon, email_marketing }) {
+    if (typeof nume_complet !== 'string' || !nume_complet.trim() || nume_complet.trim().length > 100
+        || (telefon != null && (typeof telefon !== 'string' || telefon.length > 20))) {
+        throw new HttpError(400, 'Nume sau telefon invalid.');
+    }
+    if (email_marketing != null && typeof email_marketing !== 'boolean') {
+        throw new HttpError(400, 'Preferința pentru emailuri trebuie să fie true sau false.');
+    }
 }
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -22,10 +32,7 @@ function registerRoutes(app, { db, verificaToken, trimiteEmailBunVenit, emailTra
     app.post('/api/auth/register', async (req, res) => {
         const { nume_complet, email, parola, telefon, email_marketing } = req.body;
         validateCredentials(email, parola);
-        if (typeof nume_complet !== 'string' || !nume_complet.trim() || nume_complet.trim().length > 100
-            || (telefon != null && (typeof telefon !== 'string' || telefon.length > 20))) {
-            throw new HttpError(400, 'Nume sau telefon invalid.');
-        }
+        validateProfile(req.body);
         const address = email.trim().toLowerCase();
         const hash = await bcrypt.hash(parola, 10);
         try {
@@ -35,7 +42,7 @@ function registerRoutes(app, { db, verificaToken, trimiteEmailBunVenit, emailTra
             if (error.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'Există deja un cont cu această adresă de email.');
             throw error;
         }
-        trimiteEmailBunVenit(address, nume_complet.trim()).catch(() => console.error('Email bun venit indisponibil.'));
+        sendNotification(() => trimiteEmailBunVenit(address, nume_complet.trim()), 'Email bun venit indisponibil.');
         res.status(201).json({ mesaj: 'Cont creat cu succes!' });
     });
 
@@ -50,30 +57,22 @@ function registerRoutes(app, { db, verificaToken, trimiteEmailBunVenit, emailTra
             email: user.email, telefon: user.telefon, rol: user.rol } });
     });
 
-    app.get('/api/auth/me', verificaToken, (req, res) => {
-        db.query('SELECT id_utilizator,nume_complet,email,telefon,rol,email_marketing FROM Utilizatori WHERE id_utilizator=?',
-        [req.user.id], (err, r) => {
-            if (err || !r.length) return res.status(404).json({ eroare: 'Utilizator negăsit.' });
-            res.json(r[0]);
-        });
+    const profileQuery = 'SELECT id_utilizator,nume_complet,email,telefon,rol,email_marketing FROM Utilizatori WHERE id_utilizator=?';
+    app.get('/api/auth/me', verificaToken, async (req, res) => {
+        const [rows] = await db.promise().execute(profileQuery, [req.user.id]);
+        if (!rows.length) throw new HttpError(404, 'Utilizator negăsit.');
+        res.json(rows[0]);
     });
 
-    app.patch('/api/auth/profil', verificaToken, (req, res) => {
+    app.patch('/api/auth/profil', verificaToken, async (req, res) => {
         const { nume_complet, telefon, email_marketing } = req.body;
-        if (typeof nume_complet !== 'string' || !nume_complet.trim() || nume_complet.length > 100)
-            return res.status(400).json({ eroare: 'Numele este obligatoriu.' });
-        db.query(
+        validateProfile(req.body);
+        await db.promise().execute(
             'UPDATE Utilizatori SET nume_complet=?, telefon=?, email_marketing=? WHERE id_utilizator=?',
-            [nume_complet.trim(), telefon || null, email_marketing ? 1 : 0, req.user.id],
-            (err) => {
-                if (err) return res.status(500).json({ eroare: 'Eroare server.' });
-                db.query('SELECT id_utilizator,nume_complet,email,telefon,rol,email_marketing FROM Utilizatori WHERE id_utilizator=?',
-                    [req.user.id], (e2, rows) => {
-                    if (e2 || !rows.length) return res.json({ mesaj: 'Profil actualizat.' });
-                    res.json({ mesaj: 'Profil actualizat.', utilizator: rows[0] });
-                });
-            }
-        );
+            [nume_complet.trim(), telefon || null, email_marketing ? 1 : 0, req.user.id]);
+        const [rows] = await db.promise().execute(profileQuery, [req.user.id]);
+        if (!rows.length) throw new HttpError(404, 'Utilizator negăsit.');
+        res.json({ mesaj: 'Profil actualizat.', utilizator: rows[0] });
     });
 
     app.post('/api/auth/forgot-password', async (req, res) => {

@@ -12,6 +12,7 @@ function createBookingService(pool) {
     const promisePool = () => typeof pool.promise === 'function' ? pool.promise() : pool;
     async function transaction(work) {
         const connection = await promisePool().getConnection();
+        let reusable = true;
         try {
             await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
             await connection.beginTransaction();
@@ -19,9 +20,14 @@ function createBookingService(pool) {
             await connection.commit();
             return result;
         } catch (error) {
-            await connection.rollback();
+            try { await connection.rollback(); }
+            catch {
+                // O conexiune cu tranzacție incertă nu trebuie să reintre în pool.
+                reusable = false;
+                connection.destroy();
+            }
             throw error;
-        } finally { connection.release(); }
+        } finally { if (reusable) connection.release(); }
     }
     async function room(connection, id) {
         const [locked] = await connection.execute('SELECT * FROM Camere WHERE id_camera=? FOR UPDATE', [id]);
@@ -117,6 +123,7 @@ function createBookingService(pool) {
             const currentRoom = await room(connection, initial[0].id_camera);
             const [rows] = await connection.execute('SELECT * FROM Rezervari WHERE id_rezervare=? FOR UPDATE', [reservationId]);
             const reservation = rows[0];
+            if (!reservation) throw new HttpError(404, 'Rezervarea nu există.');
             if (userId && Number(reservation.id_utilizator) !== Number(userId)) throw new HttpError(403, 'Acces neautorizat.');
             if (cancellation) {
                 if (reservation.status_rezervare === 'anulata') throw new HttpError(400, 'Rezervarea este deja anulată.');
