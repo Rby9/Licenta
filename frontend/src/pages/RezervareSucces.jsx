@@ -1,3 +1,5 @@
+import { downloadReservation } from '../utils/downloadReservation';
+import { useToast } from '../components/ToastContext';
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 
@@ -10,6 +12,7 @@ const fmtD = (s) => {
 
 export default function RezervareSucces() {
   const [searchParams] = useSearchParams();
+  const addToast = useToast();
   const sessionId = searchParams.get("session_id");
 
   const [rezervare, setRezervare] = useState(null);
@@ -38,27 +41,15 @@ export default function RezervareSucces() {
       }
     };
     confirma();
-  }, [sessionId]);
+  }, [sessionId, token]);
 
   const handleFactura = async () => {
     if (!rezervare?.id_rezervare) return;
     try {
       setDescarcand(true);
-      const res = await fetch(`${API_URL}/api/rezervari/${rezervare.id_rezervare}/factura`, {
-        headers: { "Authorization": `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      const url  = window.URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href = url;
-      a.download = `Factura_HoteluriRo_${rezervare.id_rezervare}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      await downloadReservation(rezervare.id_rezervare, token);
     } catch {
-      alert("Nu s-a putut genera factura. Încearcă din nou.");
+      addToast("Nu s-a putut genera factura. Încearcă din nou.", "error");
     } finally {
       setDescarcand(false);
     }

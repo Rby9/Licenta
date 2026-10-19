@@ -87,22 +87,33 @@ node backend/creeaza_admin.js
 
 Utilitarul cere numele, emailul, unul dintre rolurile `super_admin`, `admin_hotel`, `admin_booking` sau `admin_marketing` și parola, introdusă fără afișare. Nu există conturi sau parole prestabilite. După confirmare, creează un singur cont în baza configurată prin `backend/.env`; conturile existente nu sunt modificate. Parola este stocată ca hash bcrypt.
 
+La adăugarea unui hotel se alege poziția prin click pe hartă; coordonatele sunt salvate în câmpurile existente. Hotelul apare pe hartă după salvare. La crearea unei categorii se indică și numărul camerelor, create în aceeași tranzacție; apoi hotelul poate fi rezervat. Ștergerea hotelurilor și categoriilor cu rezervări este blocată pentru păstrarea istoricului.
+
+Fotografiile demonstrative sunt generate și păstrate local; se pot reutiliza sau înlocui din administrare cu un URL propriu ori un fișier încărcat. Camerele au un interior demonstrativ separat, fără asociere cu o cameră reală.
+
 Scripturile din `backend/migratii/` modifică schema sau datele și nu trebuie rulate automat la pornire. Necesită verificare și backup înainte de utilizare.
 
 ## Verificări
 
 ```sh
+npm test --prefix frontend
+npm run test:e2e --prefix frontend
+TEST_MYSQL=1 npm run test:e2e --prefix frontend
 npm test --prefix backend
 TEST_MYSQL=1 npm test --prefix backend
 npm run build --prefix frontend
 npm run lint --prefix frontend
 ```
 
-Testele obișnuite folosesc baze simulate, un transport email fals și un client Stripe simulat. Semnăturile webhook sunt verificate cu SDK-ul Stripe, fără apeluri de rețea către procesator.
+Testele unitare frontend verifică gestionarea răspunsurilor API, sesiunea locală, redarea secțiunilor administrative, paginarea, graficele și descărcarea PDF. Acestea rulează cu Node și Vite, fără browser sau servicii externe.
+
+Testele Playwright (`test:e2e`) folosesc Google Chrome instalat local, în mod headless și cu profil temporar. Verifică pagini la 390, 768 și 1440 px, derularea hărților, meniurile pe roluri, formularele și salvarea la dublu click. Testele obișnuite simulează cererile API și nu scriu în MySQL. Cu `TEST_MYSQL=1` se activează și un flux complet de administrare în browser, conectat la backendul real și o bază temporară `hoteluriro_test_e2e_<aleator>`. Acesta verifică autentificarea, crearea și editarea hotelului cu păstrarea coordonatelor, inventarul camerelor și protejarea istoricului rezervărilor. Baza temporară se șterge la final; baza aplicației nu este modificată. Stripe și transportul de email rămân simulate. Vite pornește pe 5173 dacă nu există deja o instanță locală. Rezultatele testelor de browser sunt excluse din Git.
+
+Testele backend obișnuite folosesc baze simulate, un transport email fals și un client Stripe simulat. Semnăturile webhook sunt verificate cu SDK-ul Stripe, fără apeluri de rețea către procesator.
 
 `TEST_MYSQL=1` activează verificările SQL și integrarea tranzacțională. Suita creează o bază temporară `hoteluriro_test_<aleator>`, importă schema și date sintetice, apoi o șterge. Contul MySQL de test trebuie să aibă drepturi `CREATE DATABASE` și `DROP DATABASE`. Testele nu scriu în baza aplicației. Sunt verificate suprapunerile, concurența, confirmările duplicate, reducerile, rollback-ul și inițializarea de la zero.
 
-Testele HTTP folosesc porturi temporare locale. PDF-ul este verificat inclusiv pentru diacritice și accesul proprietarului. Testele nu înlocuiesc verificarea manuală a Stripe și Gmail cu propriile conturi de test. Buildul frontend trece, cu avertismentul de dimensiune a bundle-ului; lintul frontend are probleme existente.
+Testele HTTP folosesc porturi temporare locale. PDF-ul este verificat inclusiv pentru diacritice și accesul proprietarului. Testele nu înlocuiesc verificarea manuală a Stripe și Gmail cu propriile conturi de test. Frontendul se încarcă pe pagini prin importuri dinamice. Buildul și lintul trec; testele de redare nu înlocuiesc verificarea vizuală și interacțiunile într-un browser.
 
 ## Documentație tehnică
 

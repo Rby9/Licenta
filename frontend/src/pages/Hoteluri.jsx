@@ -1,7 +1,9 @@
+import { hotelCover, demoHotelImage, demoImageNote, usesDemoImage } from '../utils/demoImages';
+import { apiRequest } from '../utils/apiRequest';
+import HotelImage from '../components/HotelImage';
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 
-import { API_URL } from "../api";
 
 // ─── Stele vizuale ─────────────────────────────────────────────────────────
 function Stele({ nr, size = 14 }) {
@@ -75,22 +77,21 @@ export default function Hoteluri() {
 
   // ── Fetch orașe pentru dropdown ─────────────────────────────────────────
   useEffect(() => {
-    fetch(`${API_URL}/api/orase`)
-      .then(r => r.json())
+    apiRequest("/api/orase")
       .then(setOrase)
       .catch(() => {});
   }, []);
 
   // ── Fetch facilități ─────────────────────────────────────────────────────
   useEffect(() => {
-    fetch(`${API_URL}/api/facilitati`)
-      .then(r => r.json())
+    apiRequest("/api/facilitati")
       .then(setFacLista)
       .catch(() => {});
   }, []);
 
   // ── Fetch hoteluri ori de câte ori se schimbă filtrele ──────────────────
   useEffect(() => {
+    const controller = new AbortController();
     const fetchHoteluri = async () => {
       try {
         setLoading(true);
@@ -106,9 +107,9 @@ export default function Hoteluri() {
         if (facilitatiSel.length) params.set("facilitati", facilitatiSel.join(","));
         params.set("sort", sortare);
 
-        const res = await fetch(`${API_URL}/api/hoteluri/search?${params}`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
+        if (Boolean(checkin) !== Boolean(checkout)) throw new Error("Alege atât check-in, cât și check-out.");
+        if (checkin && checkout <= checkin) throw new Error("Check-out trebuie să fie după check-in.");
+        const data = await apiRequest(`/api/hoteluri/search?${params}`, { signal: controller.signal });
 
         const filtrate = cautare.trim()
           ? data.filter(h =>
@@ -120,10 +121,10 @@ export default function Hoteluri() {
         setHoteluri(filtrate);
         setTotal(filtrate.length);
         setListKey(k => k + 1);
-      } catch {
-        setEroare("Nu s-a putut conecta la server.");
+      } catch (error) {
+        if (!controller.signal.aborted) setEroare(error.message || "Nu s-a putut conecta la server.");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
@@ -133,8 +134,9 @@ export default function Hoteluri() {
     if (checkin)      sp.checkin = checkin;
     if (checkout)     sp.checkout = checkout;
     if (guests)       sp.guests = guests;
-    setSearchParams(sp);
-  }, [orasSelectat, steleMin, pretMax, sortare, cautare, checkin, checkout, guests, facilitatiSel]);
+    setSearchParams(sp, { replace: true });
+    return () => controller.abort();
+  }, [orasSelectat, steleMin, pretMax, sortare, cautare, checkin, checkout, guests, facilitatiSel, setSearchParams]);
 
   const resetFiltre = () => {
     setOras(""); setSteleMin(0); setPretMax(1000);
@@ -440,10 +442,10 @@ export default function Hoteluri() {
     : "Toate hotelurile";
 
   return (
-    <div style={s.page}>
+    <div className="hotels-page" style={s.page}>
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
-      <div style={s.header}>
+      <div className="page-heading" style={s.header}>
         <div style={s.headerInner}>
           <div style={s.breadcrumb}>
             <Link to="/" style={s.breadcrumbLink}>Acasă</Link>
@@ -464,10 +466,10 @@ export default function Hoteluri() {
       </div>
 
       {/* ── LAYOUT: SIDEBAR + CARDURI ────────────────────────────────────── */}
-      <div style={s.layout}>
+      <div className="page-layout hotels-layout" style={s.layout}>
 
         {/* ════ SIDEBAR FILTRE ════ */}
-        <aside style={s.sidebar}>
+        <aside className="hotels-sidebar" style={s.sidebar}>
           <div style={s.sidebarHeader}>
             <span style={s.sidebarTitle}>Filtre</span>
             <button style={s.resetBtn} onClick={resetFiltre}>Resetează</button>
@@ -616,10 +618,10 @@ export default function Hoteluri() {
         </aside>
 
         {/* ════ LISTA HOTELURI ════ */}
-        <div style={s.content}>
+        <div className="hotels-content" style={s.content}>
 
           {/* Bara de sortare */}
-          <div style={s.topBar}>
+          <div className="hotels-toolbar" style={s.topBar}>
             <p style={s.topBarText}>
               {!loading && (
                 <>
@@ -673,18 +675,17 @@ export default function Hoteluri() {
               {hoteluri.map((h, idx) => (
                 <div
                   key={`${listKey}-${h.id_hotel}`}
-                  style={{ ...s.card(h.id_hotel), animation: "cardIn 0.5s ease both", animationDelay: `${idx * 65}ms` }}
+                  className="hotel-result-card" style={{ ...s.card(h.id_hotel), animation: "cardIn 0.5s ease both", animationDelay: `${idx * 65}ms` }}
                   onMouseEnter={() => setHovCard(h.id_hotel)}
                   onMouseLeave={() => setHovCard(null)}
                   onClick={() => navigate(`/hoteluri/${h.id_hotel}`)}
                 >
                   {/* Imagine */}
-                  <div style={s.cardImgWrap}>
-                    <img
-                      src={h.imagine_url || `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80`}
+                  <div className="hotel-card-image" style={s.cardImgWrap}>
+                    <HotelImage
+                      src={hotelCover(h)} fallback={demoHotelImage(h)}
                       alt={h.nume_hotel}
                       style={s.cardImg(hovCard === h.id_hotel)}
-                      onError={e => { e.target.src = "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80"; }}
                     />
                     <div style={s.steleOnImg}>
                       <Stele nr={h.stele} size={11} />
@@ -705,7 +706,8 @@ export default function Hoteluri() {
                   </div>
 
                   {/* Corp card */}
-                  <div style={s.cardBody}>
+                  <div className="hotel-card-body" style={s.cardBody}>
+                    {usesDemoImage(h) && <small className="demo-image-note">{demoImageNote}</small>}
                     <div style={s.cardTop}>
                       <div style={s.cardNume}>{h.nume_hotel}</div>
                       <div style={s.cardOras}>📍 {h.nume_oras} · {h.adresa}</div>
@@ -725,7 +727,7 @@ export default function Hoteluri() {
                       )}
                       <div style={s.cardDesc}>{h.descriere}</div>
                     </div>
-                    <div style={s.cardBottom}>
+                    <div className="hotel-card-bottom" style={s.cardBottom}>
                       <div>
                         <div style={s.cardPretLabel}>De la</div>
                         <div>

@@ -1,6 +1,7 @@
+import { hotelDemoImages } from '../utils/demoImages';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -210,7 +211,7 @@ export default function Home() {
     },
     heroBg: {
       position: "absolute", inset: 0,
-      background: "url('https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&q=85') center/cover no-repeat",
+      background: `url(${hotelDemoImages[0]}) center/cover no-repeat`,
       animation: "heroScale 8s ease forwards", zIndex: 0,
     },
     heroOverlay: {
@@ -398,7 +399,7 @@ export default function Home() {
       `}</style>
 
       {/* ═══════════════════════════ HERO ════════════════════════════════ */}
-      <section style={s.hero}>
+      <section className="home-hero" style={s.hero}>
         <div style={s.heroBg} />
         <div style={s.heroOverlay} />
 
@@ -417,8 +418,8 @@ export default function Home() {
 
           {/* ── Search Bar ── */}
           <div style={s.searchWrap}>
-            <div style={s.searchBox}>
-              <div style={{ ...s.field, flex: 2, position: "relative" }}>
+            <div className="home-search" style={s.searchBox}>
+              <div className="home-search-field" style={{ ...s.field, flex: 2, position: "relative" }}>
                 <label style={s.flabel}>Destinație</label>
                 <input
                   style={s.finput("city")}
@@ -444,21 +445,21 @@ export default function Home() {
                 )}
               </div>
 
-              <div style={s.field}>
+              <div className="home-search-field" style={s.field}>
                 <label style={s.flabel}>Check-in</label>
                 <input type="date" style={s.finput("in")} value={checkin}
                   onChange={e => setIn(e.target.value)}
                   onFocus={() => setSearchFocus("in")} onBlur={() => setSearchFocus(null)} />
               </div>
 
-              <div style={s.field}>
+              <div className="home-search-field" style={s.field}>
                 <label style={s.flabel}>Check-out</label>
                 <input type="date" style={s.finput("out")} value={checkout}
                   onChange={e => setOut(e.target.value)}
                   onFocus={() => setSearchFocus("out")} onBlur={() => setSearchFocus(null)} />
               </div>
 
-              <div style={{ ...s.field, borderRight: "none", flex: "0 0 90px" }}>
+              <div className="home-search-field" style={{ ...s.field, borderRight: "none", flex: "0 0 90px" }}>
                 <label style={s.flabel}>Persoane</label>
                 <input type="number" style={s.finput("g")} value={guests}
                   min={1} max={10} onChange={e => setGuests(e.target.value)}
@@ -521,7 +522,7 @@ export default function Home() {
               </h2>
               <div style={{ width: "48px", height: "2px", background: "linear-gradient(90deg,#C4A050,#F0D080)", margin: "0 auto 52px", borderRadius: "1px" }} />
 
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${oferteSez.length},1fr)`, gap: "24px" }}>
+              <div className="season-offers" style={{ display: "grid", gridTemplateColumns: `repeat(${oferteSez.length},1fr)`, gap: "24px" }}>
                 {oferteSez.map(o => (
                   <div key={o.id_oferta} style={{
                     borderRadius: "6px", overflow: "hidden",
@@ -591,7 +592,7 @@ export default function Home() {
       })()}
 
       {/* ═══════════════════ DESTINAȚII + HARTĂ ═════════════════════════ */}
-      <section ref={destRef} style={{ ...s.section, opacity: destInView ? 1 : 0, transform: destInView ? "translateY(0)" : "translateY(36px)", transition: "opacity 0.8s ease, transform 0.8s ease" }}>
+      <section ref={destRef} className="page-section" style={{ ...s.section, opacity: destInView ? 1 : 0, transform: destInView ? "translateY(0)" : "translateY(36px)", transition: "opacity 0.8s ease, transform 0.8s ease" }}>
         <span style={s.secEyebrow}>Explorează</span>
         <h2 style={s.secTitle}>Destinații populare</h2>
         <div style={s.secLine} />
@@ -607,9 +608,9 @@ export default function Home() {
         )}
 
         {!eroare && (
-          <div style={s.splitWrap}>
+          <div className="home-destinations" style={s.splitWrap}>
             {/* ── Lista de orașe ── */}
-            <div style={s.cityList} className="city-list-scroll">
+            <div style={s.cityList} className="city-list-scroll home-city-list">
               {loading
                 ? Array.from({ length: 6 }).map((_, i) => <SkeletonCity key={i} />)
                 : orase.map(oras => {
@@ -624,7 +625,7 @@ export default function Home() {
                           src={getImagineOras(oras)}
                           alt={oras.nume_oras}
                           style={s.cityThumb}
-                          onError={e => { e.target.src = IMAGINI_FALLBACK.default; }}
+                          onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = IMAGINI_FALLBACK.default; }}
                         />
                         <div>
                           <div style={s.cityName}>{oras.nume_oras}</div>
@@ -656,14 +657,14 @@ export default function Home() {
             </div>
 
             {/* ── Harta Leaflet ── */}
-            <div style={s.mapWrap}>
+            <div className="home-map" style={s.mapWrap}>
               {!loading && (
                 <MapContainer
                   center={[45.9432, 24.9668]}
                   zoom={7}
                   style={{ height: "100%", width: "100%" }}
                   zoomControl={true}
-                  scrollWheelZoom={true}
+                  scrollWheelZoom={false}
                 >
                   <TileLayer
                     url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -730,7 +731,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════ DE CE NOI ═══════════════════════════════ */}
-      <section ref={featRef} style={{ ...s.featSec, opacity: featInView ? 1 : 0, transform: featInView ? "translateY(0)" : "translateY(36px)", transition: "opacity 0.8s ease, transform 0.8s ease" }}>
+      <section ref={featRef} className="page-section" style={{ ...s.featSec, opacity: featInView ? 1 : 0, transform: featInView ? "translateY(0)" : "translateY(36px)", transition: "opacity 0.8s ease, transform 0.8s ease" }}>
         <span style={{ ...s.secEyebrow, color: "#C4A050" }}>De ce HoteluriRo</span>
         <h2 style={{ ...s.secTitle, color: "#fff" }}>Rezervă cu încredere</h2>
         <div style={{ ...s.secLine, margin: "0 auto" }} />

@@ -21,7 +21,7 @@ export default function Footer() {
 
   return (
     <footer style={{ background: "#0A0E23", borderTop: "1px solid rgba(196,160,80,0.12)", paddingTop: "56px" }}>
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 48px 48px", display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: "48px" }}>
+      <div className="footer-grid" style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 48px 48px", display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: "48px" }}>
 
         {/* Brand */}
         <div>

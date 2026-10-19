@@ -1,3 +1,4 @@
+import { jsxBindings } from './eslint-jsx.js'
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -6,6 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   globalIgnores(['dist']),
+  { files: ['test/**/*.js', 'e2e/**/*.js', 'playwright.config.js'], languageOptions: { globals: globals.node } },
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -22,8 +24,10 @@ export default defineConfig([
         sourceType: 'module',
       },
     },
+    plugins: { local: { rules: { 'jsx-bindings': jsxBindings } } },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'local/jsx-bindings': 'error',
+      'no-unused-vars': ['error', { varsIgnorePattern: '^_' }],
     },
   },
 ])

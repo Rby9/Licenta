@@ -1,49 +1,20 @@
+import { useSession } from '../hooks/useSession';
+import { clearSession } from '../utils/session';
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "./ToastContext";
 
-const injectGlobalStyles = () => {
-  if (document.getElementById("hoteluri-global-styles")) return;
-  const style = document.createElement("style");
-  style.id = "hoteluri-global-styles";
-  style.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Jost:wght@300;400;500&display=swap');
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Jost', sans-serif; background: #F8F6F1; color: #1a1a2e; }
-    @keyframes fadeDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes fadeUp   { from { opacity:0; transform:translateY(30px); }  to { opacity:1; transform:translateY(0); } }
-    @keyframes shimmer  { 0% { background-position:-200% center; } 100% { background-position:200% center; } }
-    @keyframes heroScale { from { transform:scale(1.06); } to { transform:scale(1); } }
-    @keyframes skeletonPulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-    @keyframes skeletonShimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
-    ::-webkit-scrollbar { width:6px; }
-    ::-webkit-scrollbar-track { background:#F8F6F1; }
-    ::-webkit-scrollbar-thumb { background:#C4A050; border-radius:3px; }
-  `;
-  document.head.appendChild(style);
-};
-
 export default function Navbar() {
-  injectGlobalStyles();
 
   const [scrolled, setScrolled]     = useState(false);
   const [hoveredLink, setHovered]   = useState(null);
   const [userMenuOpen, setUserMenu] = useState(false);
-  const [user, setUser]             = useState(null);
+  const { utilizator: user } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const addToast = useToast();
   const isHome   = location.pathname === "/";
   const isTransparent = isHome && !scrolled;
-
-  // ── Citește userul din localStorage (re-citește la fiecare schimbare de rută) ──
-  useEffect(() => {
-    try {
-      const val = localStorage.getItem("utilizator");
-      if (!val || val === "undefined") return setUser(null);
-      setUser(JSON.parse(val));
-    } catch { setUser(null); }
-  }, [location.pathname]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -53,29 +24,17 @@ export default function Navbar() {
 
   // Închide dropdown-ul când dai click în afară
   useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") setUserMenu(false); };
     const close = (e) => {
       if (!e.target.closest("#user-menu-wrap")) setUserMenu(false);
     };
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", onKey); };
   }, []);
 
-  useEffect(() => {
-  const handler = () => {
-    try {
-      const val = localStorage.getItem("utilizator");
-      if (!val || val === "undefined") return setUser(null);
-      setUser(JSON.parse(val));
-    } catch { setUser(null); }
-  };
-  window.addEventListener("utilizator-update", handler);
-  return () => window.removeEventListener("utilizator-update", handler);
-}, []);
-
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("utilizator");
-    setUser(null);
+    clearSession();
     setUserMenu(false);
     addToast("Ai fost deconectat cu succes.", "success");
     navigate("/");
@@ -197,10 +156,10 @@ export default function Navbar() {
   ];
 
   return (
-    <nav style={s.nav}>
+    <nav className="site-nav" aria-label="Navigare principală" style={s.nav}>
       <Link to="/" style={s.logo}>HoteluriRo</Link>
 
-      <ul style={s.navLinks}>
+      <ul className="site-nav-links" style={s.navLinks}>
         {navItems.map(({ label, to }) => (
           <li key={label}>
             <Link to={to} style={s.link(label)}
@@ -215,13 +174,13 @@ export default function Navbar() {
         <li style={{ marginLeft: "12px" }}>
           {user ? (
             <div id="user-menu-wrap" style={s.userWrap}>
-              <button style={s.avatarBtn} onClick={() => setUserMenu(v => !v)}>
+              <button aria-label="Meniul contului" aria-expanded={userMenuOpen} aria-controls="account-dropdown" style={s.avatarBtn} onClick={() => setUserMenu(v => !v)}>
                 <div style={s.avatar}>{initiale}</div>
-                <span style={s.avatarName}>{user.nume_complet?.split(" ")[0]}</span>
+                <span className="nav-user-name" style={s.avatarName}>{user.nume_complet?.split(" ")[0]}</span>
                 <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.6rem", marginLeft: "2px" }}>▼</span>
               </button>
 
-              <div style={s.dropdown}>
+              <div id="account-dropdown" hidden={!userMenuOpen} style={s.dropdown}>
                 <div style={s.dropHead}>
                   <div style={s.dropName}>{user.nume_complet}</div>
                   <div style={s.dropEmail}>{user.email}</div>

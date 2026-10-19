@@ -23,7 +23,7 @@ function ToastItem({ id, text, type, onRemove }) {
   }, [dismiss]);
 
   return (
-    <div onClick={dismiss} style={{
+    <div role="status" className="toast-item" onClick={dismiss} style={{
       fontFamily: "'Jost',sans-serif", fontSize: "0.88rem",
       padding: "14px 16px", borderRadius: "4px",
       background: "#0A0E23", border: `1px solid ${c.border}`,
@@ -46,7 +46,7 @@ function ToastItem({ id, text, type, onRemove }) {
 
 function ToastContainer({ toasts, onRemove }) {
   return (
-    <div style={{
+    <div className="toast-container" style={{
       position: "fixed", bottom: "28px", right: "28px",
       zIndex: 9999, display: "flex", flexDirection: "column",
       gap: "10px", pointerEvents: "none",

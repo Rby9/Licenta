@@ -1,3 +1,6 @@
+import { hotelCover, demoHotelImage, demoImageNote, usesDemoImage } from '../utils/demoImages';
+import HotelImage from '../components/HotelImage';
+import { useSession } from '../hooks/useSession';
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 
@@ -34,24 +37,19 @@ export default function Rezervare() {
   const [checkin, setCheckin]   = useState(checkinURL || "");
   const [checkout, setCheckout] = useState(checkoutURL || "");
 
-  const token = localStorage.getItem("token");
-  const utilizator = (() => {
-    try {
-      const val = localStorage.getItem("utilizator");
-      if (!val || val === "undefined") return null;
-      return JSON.parse(val);
-    } catch { return null; }
-  })();
+  const { utilizator, token } = useSession();
 
   useEffect(() => {
     if (!utilizator || !token) {
       sessionStorage.setItem("returnTo", window.location.href);
       navigate("/autentificare");
     }
-  }, []);
+  }, [navigate, token, utilizator]);
 
   useEffect(() => {
-    if (!hotelId || !categorieId) return;
+    if (!hotelId || !categorieId) {
+      setEroare("Alege mai întâi un hotel și o categorie de cameră."); setLoading(false); return;
+    }
     const fetchDate = async () => {
       try {
         setLoading(true);
@@ -60,9 +58,10 @@ export default function Rezervare() {
         const data = await res.json();
         setHotel(data);
         const cat = data.categorii_camere?.find(c => String(c.id_categorie) === String(categorieId));
+        if (!cat) throw new Error("Categoria de cameră nu a fost găsită.");
         setCategorie(cat);
-      } catch {
-        setEroare("Nu s-au putut încărca datele hotelului.");
+      } catch (error) {
+        setEroare(error.message || "Nu s-au putut încărca datele hotelului.");
       } finally {
         setLoading(false);
       }
@@ -197,13 +196,13 @@ export default function Rezervare() {
   };
 
   if (loading) return (
-    <div style={{ ...s.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div className="booking-page" style={{ ...s.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ fontFamily: "'Jost',sans-serif", color: "rgba(26,26,46,0.4)" }}>Se încarcă...</div>
     </div>
   );
 
   if (!hotel || !categorie) return (
-    <div style={{ ...s.page, textAlign: "center", paddingTop: "120px" }}>
+    <div className="booking-page" style={{ ...s.page, textAlign: "center", paddingTop: "120px" }}>
       <div style={{ fontFamily: "'Jost',sans-serif", color: "#888" }}>
         Date lipsă. <Link to="/hoteluri" style={{ color: "#C4A050" }}>Înapoi la hoteluri</Link>
       </div>
@@ -211,9 +210,9 @@ export default function Rezervare() {
   );
 
   return (
-    <div style={s.page}>
+    <div className="booking-page" style={s.page}>
       <div style={s.hero}>
-        <div style={s.heroInner}>
+        <div className="page-heading" style={s.heroInner}>
           <div style={s.breadcrumb}>
             <Link to="/" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>Acasă</Link>
             <span>›</span>
@@ -254,14 +253,14 @@ export default function Rezervare() {
         </div>
       </div>
 
-      <div style={s.layout}>
+      <div className="page-layout booking-layout" style={s.layout}>
         <div>
           <div style={s.sectionTitle}>Date sejur</div>
           <div style={s.sectionLine} />
 
           <div style={s.card}>
             <div style={s.cardHead}>Date client</div>
-            <div style={s.cardBody}>
+            <div className="booking-card-body" style={s.cardBody}>
               <div style={s.row}>
                 <span style={s.rowLabel}>Nume</span>
                 <span style={s.rowValue}>{utilizator?.nume_complet}</span>
@@ -276,7 +275,7 @@ export default function Rezervare() {
           {/* Selectare date */}
           <div style={{ ...s.card, marginTop: "20px" }}>
             <div style={s.cardHead}>Perioada sejurului</div>
-            <div style={s.cardBody}>
+            <div className="booking-card-body" style={s.cardBody}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "12px" }}>
                 <div>
                   <label style={{ fontFamily: "'Jost',sans-serif", fontSize: "0.68rem", fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "#C4A050", display: "block", marginBottom: "6px" }}>Check-in</label>
@@ -304,7 +303,7 @@ export default function Rezervare() {
           {/* ── Cod promoțional ── */}
           <div style={{ ...s.card, marginTop: "20px" }}>
             <div style={s.cardHead}>Cod promoțional</div>
-            <div style={s.cardBody}>
+            <div className="booking-card-body" style={s.cardBody}>
               {codValidat ? (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
@@ -346,7 +345,7 @@ export default function Rezervare() {
           {/* ── Metodă de plată ── */}
           <div style={{ ...s.card, marginTop: "20px" }}>
             <div style={s.cardHead}>Metodă de plată</div>
-            <div style={s.cardBody}>
+            <div className="booking-card-body" style={s.cardBody}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 {[
                   {
@@ -386,10 +385,8 @@ export default function Rezervare() {
 
           <div style={s.politicaBox}>
             <div style={s.politicaTitle}>📋 Politică de anulare</div>
-            <div style={s.politicaText}>✓ <strong>Anulare gratuită</strong> — cu mai mult de 48h înainte de check-in, rambursare 100%</div>
-            <div style={s.politicaText}>⚠ <strong>Anulare parțială</strong> — între 24h și 48h înainte, rambursare 80%</div>
-            <div style={s.politicaText}>✗ <strong>Fără rambursare</strong> — mai puțin de 24h înainte de check-in</div>
-            <div style={{ height: "12px" }} />
+            <div style={s.politicaText}>Poți anula rezervarea din cont cu mai mult de 24 de ore înainte de check-in.</div>
+            <div style={s.politicaText}>Pentru plățile online, rambursarea se verifică separat cu administratorul; anularea nu returnează automat banii.</div>
             <label style={s.checkboxRow}>
               <input type="checkbox" checked={politicaAcceptata}
                 onChange={e => setPolitica(e.target.checked)}
@@ -403,9 +400,7 @@ export default function Rezervare() {
             <div>
               <strong style={{ color: "#0A0E23" }}>Plată securizată prin Stripe</strong><br />
               Datele cardului sunt procesate direct de Stripe. HoteluriRo nu stochează informații despre cardul tău.<br />
-              <span style={{ color: "#C4A050", fontStyle: "italic" }}>
-                Test: card 4242 4242 4242 4242, orice dată și orice CVV.
-              </span>
+
             </div>
           </div>
 
@@ -423,7 +418,7 @@ export default function Rezervare() {
             {metodaPlata === "avans_online"
               ? <>Acum plătești avansul de <strong>{sumaAvans.toLocaleString()} RON</strong>. Restul de {(pretTotal - sumaAvans).toLocaleString()} RON se achită la hotel.<br /></>
               : null}
-            HoteluriRo aplică un comision de 10% ({comision} RON). Suma de {sumHotel} RON va fi decontată hotelului.
+            HoteluriRo aplică un comision de 10% ({comision} RON). Suma aferentă hotelului este de {sumHotel} RON.
           </div>
         </div>
 
@@ -431,12 +426,12 @@ export default function Rezervare() {
           <div style={s.sectionTitle}>Sumar rezervare</div>
           <div style={s.sectionLine} />
           <div style={s.card}>
+            {usesDemoImage(hotel) && <p className="demo-image-note" style={{ padding: "8px 14px" }}>{demoImageNote}</p>}
             {/* Imagine hotel */}
             <div style={{ height: "180px", overflow: "hidden", position: "relative" }}>
-              <img
-                src={hotel.imagine_url || "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80"}
+              <HotelImage
+                src={hotelCover(hotel)} fallback={demoHotelImage(hotel)}
                 alt={hotel.nume_hotel}
-                onError={e => { e.target.src = "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80"; }}
                 style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "transform .4s ease" }}
               />
               <div style={{
@@ -455,7 +450,7 @@ export default function Rezervare() {
               }}>{"★".repeat(hotel.stele)}</div>
             </div>
 
-            <div style={s.cardBody}>
+            <div className="booking-card-body" style={s.cardBody}>
               <div style={s.row}><span style={s.rowLabel}>Tip cameră</span><span style={s.rowValue}>{categorie.denumire}</span></div>
               <div style={s.row}><span style={s.rowLabel}>Check-in</span><span style={s.rowValue}>{checkin ? formatData(checkin) : "—"}</span></div>
               <div style={s.row}><span style={s.rowLabel}>Check-out</span><span style={s.rowValue}>{checkout ? formatData(checkout) : "—"}</span></div>

@@ -30,7 +30,7 @@ backend/
       administrare/         # hoteluri, utilizatori, oferte și rapoarte
       oferte/               # oferte publice și validarea reducerilor
       recenzii/             # recenzii condiționate de un sejur încheiat
-    services/               # rezervări, plăți, validare, email, PDF și uploads
+    services/               # catalog, tranzacții, rezervări, plăți, validare, email, PDF și uploads
   database/                 # schemă MySQL 8, date demo și inițializare protejată
   test/                     # teste unitare, HTTP și integrare MySQL
   fonts/                    # fonturi Roboto locale și licența lor
@@ -40,7 +40,7 @@ backend/
 
 `createApp` primește dependențele prin parametri pentru a permite teste fără servicii externe. Pornirea serverului este separată de importul aplicației. Erorile neprevăzute au răspuns JSON comun, fără SQL sau configurație privată. Upload-urile au limită de dimensiune și extensii permise.
 
-Frontendul este organizat în `pages/`, `components/` și `assets/`. `api.js` definește adresa comună, iar `vite.config.js` redirecționează `/api` și `/uploads` către backend în dezvoltare.
+Frontendul este organizat în `pages/`, `components/`, `hooks/`, `utils/`, `styles/` și `assets/`. Paginile sunt încărcate separat prin `lazy` și `Suspense`. Panoul administrativ are componente separate pentru fiecare secțiune, un hook pentru încărcarea datelor și module pentru stiluri și calcule. Sesiunea este urmărită prin `useSyncExternalStore`, inclusiv la schimbările din alte taburi. Cererile de căutare vechi sunt anulate când filtrele se schimbă; descărcarea PDF și tratarea fotografiilor indisponibile sunt comune paginilor. `api.js` definește adresa comună, iar `vite.config.js` redirecționează `/api` și `/uploads` către backend în dezvoltare.
 
 ## Disponibilitate și rezervări
 
@@ -53,7 +53,7 @@ AND rezervare.checkout > cerere.checkin
 
 Checkout-ul este exclus: alt sejur poate începe în aceeași zi. Statusul `NULL` este tratat conservator ca ocupat. Numărarea folosește camerele, fără scăderea repetată a aceleiași camere sau a camerelor inactive. `/hoteluri/search` și `/hoteluri/cauta` folosesc aceeași implementare; prețul minim și numărul disponibil se calculează pe camerele care corespund filtrelor. Fără interval, disponibilitatea reprezintă inventarul activ.
 
-Crearea unei rezervări folosește o conexiune dedicată și o tranzacție. Camera este blocată prin `FOR UPDATE`, apoi disponibilitatea este reverificată înainte de inserare. Codul de reducere este blocat și consumat în aceeași tranzacție. Erorile produc rollback. Reactivarea unei rezervări anulate aplică aceeași verificare de suprapunere.
+Crearea unei rezervări folosește o conexiune dedicată și o tranzacție. Camera este blocată prin `FOR UPDATE`, apoi disponibilitatea este reverificată înainte de inserare. Codul de reducere este blocat și consumat în aceeași tranzacție. Erorile produc rollback. Reactivarea unei rezervări anulate aplică aceeași verificare de suprapunere. Crearea categoriilor și camerelor este atomică. Ștergerea hotelurilor și categoriilor blochează inventarul și verifică existența oricăror rezervări, inclusiv anulate, înainte de ștergere; istoricul nu poate fi eliminat prin aceste rute.
 
 Prețurile sunt calculate în bani întregi din tariful DB și numărul nopților. Reducerea, avansul de 30% și comisionul de 10% sunt rotunjite la ban. Totalurile trimise de client nu sunt folosite pentru autorizarea sumei. O rezervare cash nu poate declara o plată online efectuată.
 
@@ -72,7 +72,7 @@ Nu sunt blocate camere pentru întreaga durată a checkout-ului. Două checkout-
 - Actualizarea codului nu aplică migrări și nu modifică automat înregistrările existente. Anularea unei rezervări nu declanșează automat refund; politica și operațiunea de rambursare trebuie tratate separat.
 - PDF-urile folosesc fonturi incluse local, cu diacritice românești. Conținutul fiscal și cota TVA din documentul demonstrativ necesită validare înainte de utilizare comercială.
 - Scripturile istorice din `migratii/` nu reprezintă instalarea de la zero și nu se rulează automat. `database/init.js` refuză baze cu tabele existente.
-- O imagine referită de baza locală lipsește. Baza MySQL și imaginile necesită backup separat.
-- Problemele ESLint și dimensiunea bundle-ului frontend sunt încă deschise. Apelurile reale Stripe/Gmail se verifică separat de suita automată.
+- O imagine referită de baza locală lipsește; frontendul afișează un înlocuitor local pentru fotografiile indisponibile. Baza MySQL și imaginile necesită backup separat.
+- Testele frontend includ redare de componente, teste Playwright cu API simulat și un flux opțional cu backend și MySQL temporar (`TEST_MYSQL=1`). Serviciile externe și înregistrările existente nu sunt utilizate de testele de browser. Apelurile reale Stripe/Gmail se verifică separat de suita automată.
 
 `.env`, regulile locale de lucru, dependențele instalate și rezultatele buildului nu sunt publicate în Git.

@@ -1,3 +1,9 @@
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { hotelCover, demoHotelImage, demoImageNote, usesDemoImage, roomDemoImage } from '../utils/demoImages';
+import HotelImage from '../components/HotelImage';
+import { useHotelData } from '../hooks/useHotelData';
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useToast } from "../components/ToastContext";
@@ -8,9 +14,9 @@ import "leaflet/dist/leaflet.css";
 // Fix pentru iconița implicită Leaflet în Vite/React
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl: markerIconRetina,
+  iconUrl:       markerIcon,
+  shadowUrl:     markerShadow,
 });
 
 function MarkerAutoPopup({ position, children }) {
@@ -53,23 +59,17 @@ export default function HotelDetalii() {
   const [searchParams] = useSearchParams();
 
   // ── State date ──────────────────────────────────────────────────────────
-  const [hotel, setHotel]       = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [eroare, setEroare]     = useState(null);
 
   // ── State UI ────────────────────────────────────────────────────────────
   const [hovCard, setHovCard]   = useState(null);
   const [hovBtn, setHovBtn]     = useState(null);
   const [pozaActiva, setPozaActiva] = useState(0); // index slider
-  const [galerie, setGalerie]           = useState([]);
-  const [galerieLoading, setGalLoading] = useState(true);
   const [galerieActiva, setGalActiva]   = useState(null);
-  const [facilitati, setFacilitati]     = useState([]);
   const [disponibilitate, setDisp]      = useState(null);
+  const [disponibilitateError, setDisponibilitateError] = useState("");
 
   // ── Recenzii ──────────────────────────────────────────────────────────
   const addToast = useToast();
-  const [recenzii, setRecenzii]         = useState([]);
   const [recenzieForm, setRecenzieForm] = useState({ rating: 0, comentariu: "" });
   const [recenzieLoading, setRecLoad]   = useState(false);
   const utilizatorCurent = (() => { try { const v = localStorage.getItem("utilizator"); return v ? JSON.parse(v) : null; } catch { return null; } })();
@@ -85,51 +85,7 @@ export default function HotelDetalii() {
   const [wCheckout, setWCheckout] = useState(checkoutURL);
   const [selectedCam, setSelectedCam] = useState(null);
 
-  // ── Fetch hotel + categorii camere ─────────────────────────────────────
-  useEffect(() => {
-    const fetchHotel = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${API_URL}/api/hoteluri/${id}`);
-        if (!res.ok) throw new Error(res.status === 404 ? "404" : "err");
-        const data = await res.json();
-        setHotel(data);
-      } catch (err) {
-        setEroare(err.message === "404"
-          ? "Hotelul nu a fost găsit."
-          : "Nu s-a putut conecta la server.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchGalerie = async () => {
-      try {
-        setGalLoading(true);
-        const res = await fetch(`${API_URL}/api/hoteluri/${id}/galerie`);
-        if (res.ok) setGalerie(await res.json());
-      } catch {} finally { setGalLoading(false); }
-    };
-
-    const fetchFacilitati = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/hoteluri/${id}/facilitati`);
-        if (res.ok) setFacilitati(await res.json());
-      } catch {}
-    };
-
-    const fetchRecenzii = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/hoteluri/${id}/recenzii`);
-        if (res.ok) setRecenzii(await res.json());
-      } catch {}
-    };
-
-    fetchHotel();
-    fetchGalerie();
-    fetchFacilitati();
-    fetchRecenzii();
-  }, [id]);
+  const { hotel, loading, eroare, galerie, galerieLoading, facilitati, recenzii, setRecenzii, sectionErrors } = useHotelData(id);
 
   const handleAdaugaRecenzie = async () => {
     if (!recenzieForm.rating) { addToast("Selectează un rating înainte de a trimite.", "error"); return; }
@@ -153,15 +109,22 @@ export default function HotelDetalii() {
   // ── Fetch disponibilitate când se schimbă datele ───────────────────────
   useEffect(() => {
     if (!checkinURL || !checkoutURL) return;
+    const controller = new AbortController();
     const fetchDisp = async () => {
       try {
         const params = new URLSearchParams({ checkin: checkinURL, checkout: checkoutURL });
         if (guestsURL) params.set("guests", guestsURL);
-        const res = await fetch(`${API_URL}/api/hoteluri/${id}/disponibilitate?${params}`);
-        if (res.ok) setDisp(await res.json());
-      } catch {}
+        const res = await fetch(`${API_URL}/api/hoteluri/${id}/disponibilitate?${params}`, { signal: controller.signal });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setDisp(data);
+        setDisponibilitateError("");
+      } catch (error) {
+        if (error.name !== "AbortError") { setDisp(null); setDisponibilitateError("Disponibilitatea nu a putut fi verificată. Încearcă din nou."); }
+      }
     };
     fetchDisp();
+    return () => controller.abort();
   }, [id, checkinURL, checkoutURL, guestsURL]);
 
   // ── Calculează nr nopți dacă avem datele din URL ───────────────────────
@@ -177,6 +140,7 @@ export default function HotelDetalii() {
       addToast("Alege datele de check-in și check-out.", "error");
       return;
     }
+    if (wCheckout <= wCheckin) { addToast("Check-out trebuie să fie după check-in.", "error"); return; }
     const categorii = hotel?.categorii_camere || [];
     const cheapest = categorii.slice().sort((a, b) => a.pret_pe_noapte - b.pret_pe_noapte)[0];
     const camTarget = selectedCam || cheapest;
@@ -406,15 +370,16 @@ export default function HotelDetalii() {
 
   // ── Loading state ──────────────────────────────────────────────────────
   if (loading) return (
-    <div style={s.page}>
-      <div style={{ ...s.heroWrap, background: "#ede8df" }} />
-      <div style={s.layout}>
+    <div className="hotel-page" style={s.page}>
+      {(sectionErrors.length > 0 || disponibilitateError) && <div className="page-notice" role="alert">{[...sectionErrors, disponibilitateError].filter(Boolean).join(" ")}</div>}
+      <div className="hotel-hero" style={{ ...s.heroWrap, background: "#ede8df" }} />
+      <div className="page-layout hotel-layout" style={s.layout}>
         <div>
           <Skeleton w="40%" h="36px" mb="16px" />
           <Skeleton w="60%" h="14px" mb="8px" />
           <Skeleton w="80%" h="14px" mb="8px" />
           <Skeleton w="50%" h="14px" mb="40px" />
-          <div style={s.camereGrid}>
+          <div className="room-grid" style={s.camereGrid}>
             {[1,2,3].map(i => (
               <div key={i} style={{ background: "#fff", borderRadius: "4px", padding: "22px", border: "1px solid rgba(196,160,80,0.1)" }}>
                 <Skeleton w="60%" h="22px" mb="12px" />
@@ -426,7 +391,7 @@ export default function HotelDetalii() {
             ))}
           </div>
         </div>
-        <div style={{ ...s.sidebar, minHeight: "300px" }}>
+        <div className="hotel-sidebar" style={{ ...s.sidebar, minHeight: "300px" }}>
           <div style={{ ...s.sidebarHead, minHeight: "70px" }} />
           <div style={s.sidebarBody}>
             {[1,2,3,4].map(i => <Skeleton key={i} h="14px" mb="14px" />)}
@@ -438,7 +403,8 @@ export default function HotelDetalii() {
 
   // ── Eroare ─────────────────────────────────────────────────────────────
   if (eroare) return (
-    <div style={s.page}>
+    <div className="hotel-page" style={s.page}>
+      {(sectionErrors.length > 0 || disponibilitateError) && <div className="page-notice" role="alert">{[...sectionErrors, disponibilitateError].filter(Boolean).join(" ")}</div>}
       <div style={s.errorBox}>
         <strong>⚠️ {eroare}</strong>
         <br />
@@ -455,11 +421,11 @@ export default function HotelDetalii() {
     </div>
   );
 
-  const DEFAULT_IMG = "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=80";
+  const DEFAULT_IMG = demoHotelImage(hotel);
 
   // Colectăm toate pozele disponibile (filtrăm nullurile)
-  const toatePoze = [hotel.imagine_url, hotel.imagine_2, hotel.imagine_3]
-    .filter(Boolean);
+  const toatePoze = [...new Set([hotelCover(hotel), hotel.imagine_2, hotel.imagine_3]
+    .filter(src => src && !/^https?:\/\/images\.unsplash\.com\//.test(src)))];
   if (toatePoze.length === 0) toatePoze.push(DEFAULT_IMG);
 
   const pozaCurenta = toatePoze[pozaActiva] || DEFAULT_IMG;
@@ -469,15 +435,15 @@ export default function HotelDetalii() {
   const wNopti = calcNopti(wCheckin, wCheckout);
 
   return (
-    <div style={s.page}>
+    <div className="hotel-page" style={s.page}>
+      {(sectionErrors.length > 0 || disponibilitateError) && <div className="page-notice" role="alert">{[...sectionErrors, disponibilitateError].filter(Boolean).join(" ")}</div>}
 
       {/* ── HERO CU SLIDER POZE ────────────────────────────────────────── */}
-      <div style={s.heroWrap}>
-        <img
-          src={pozaCurenta}
+      <div className="hotel-hero" style={s.heroWrap}>
+        <HotelImage
+          src={pozaCurenta} fallback={DEFAULT_IMG}
           alt={hotel.nume_hotel}
           style={s.heroImg}
-          onError={e => { e.target.src = DEFAULT_IMG; }}
         />
         <div style={s.heroOverlay} />
 
@@ -535,7 +501,7 @@ export default function HotelDetalii() {
             </div>
           </>
         )}
-        <div style={s.heroContent}>
+        <div className="page-heading" style={s.heroContent}>
           {/* Breadcrumb */}
           <div style={s.breadcrumb}>
             <Link to="/" style={s.breadLink}>Acasă</Link>
@@ -565,7 +531,8 @@ export default function HotelDetalii() {
       </div>
 
       {/* ── LAYOUT ────────────────────────────────────────────────────── */}
-      <div style={s.layout}>
+      <div className="page-layout hotel-layout" style={s.layout}>
+        {usesDemoImage(hotel) && <p className="demo-image-note" style={{ gridColumn: "1 / -1" }}>{demoImageNote} · prezentare orientativă</p>}
 
         {/* ════ COLOANA STÂNGĂ ════ */}
         <div>
@@ -608,7 +575,7 @@ export default function HotelDetalii() {
               Nu există camere configurate pentru acest hotel.
             </p>
           ) : (
-            <div style={s.camereGrid}>
+            <div className="room-grid" style={s.camereGrid}>
               {hotel.categorii_camere?.map(cam => {
                 const pretTotal = nopti > 0
                   ? Math.round(cam.pret_pe_noapte * nopti)
@@ -623,6 +590,10 @@ export default function HotelDetalii() {
                     onMouseLeave={() => setHovCard(null)}
                     onClick={() => setSelectedCam(cam)}
                   >
+                    <div>
+                      <HotelImage src={roomDemoImage} alt={`Interior demonstrativ — ${cam.denumire}`} className="room-demo-image" />
+                      <p className="demo-image-note" style={{ padding: "0 12px" }}>{demoImageNote} · interior orientativ</p>
+                    </div>
                     <div style={{ ...s.cameraHeader, position: "relative" }}>
                       <div style={s.cameraDenumire}>{cam.denumire}</div>
                       <div style={s.cameraCapacitate}>
@@ -722,7 +693,7 @@ export default function HotelDetalii() {
                     center={[lat, lng]}
                     zoom={15}
                     style={{ height: "360px", width: "100%" }}
-                    scrollWheelZoom={true}
+                    scrollWheelZoom={false}
                   >
                     <TileLayer
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -787,7 +758,7 @@ export default function HotelDetalii() {
                       borderRadius: "4px", overflow: "hidden", cursor: "pointer",
                       aspectRatio: "4/3", position: "relative",
                     }}>
-                    <img src={poza.imagine_url} alt={poza.titlu || `Foto ${i+1}`}
+                    <HotelImage src={poza.imagine_url} alt={poza.titlu || `Foto ${i+1}`}
                       style={{
                         width: "100%", height: "100%", objectFit: "cover",
                         transition: "transform .4s ease",
@@ -821,7 +792,7 @@ export default function HotelDetalii() {
                   padding: "12px 18px", borderRadius: "2px",
                 }}>‹</button>
 
-              <img
+              <HotelImage
                 src={galerie[galerieActiva]?.imagine_url}
                 alt="galerie"
                 onClick={e => e.stopPropagation()}
@@ -999,7 +970,7 @@ export default function HotelDetalii() {
         </div>
 
         {/* ════ SIDEBAR DREAPTA — BOOKING WIDGET ════ */}
-        <aside style={s.sidebar}>
+        <aside className="hotel-sidebar" style={s.sidebar}>
 
           {/* Price header */}
           <div style={{
@@ -1094,7 +1065,7 @@ export default function HotelDetalii() {
             {/* Trust badges */}
             <div style={{ marginTop: "18px", display: "flex", flexDirection: "column", gap: "9px" }}>
               {[
-                "Anulare gratuită (48h înainte)",
+                "Anulare din cont (peste 24h înainte)",
                 "Plată securizată prin Stripe",
                 "Suport Lun–Dum · 08:00–22:00",
               ].map((badge, i) => (

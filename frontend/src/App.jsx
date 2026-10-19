@@ -1,20 +1,22 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Navbar           from "./components/Navbar";
-import Home             from "./pages/Home";
-import Hoteluri         from "./pages/Hoteluri";
-import HotelDetalii     from "./pages/HotelDetalii";
-import Autentificare    from "./pages/Autentificare";
-import Rezervare        from "./pages/Rezervare";
-import RezervareSucces  from "./pages/RezervareSucces";
-import RezervareAnulat  from "./pages/RezervareAnulat";
-import ProfilUtilizator from "./pages/ProfilUtilizator";
-import AdminDashboard   from "./pages/admin/AdminDashboard";
-import UitareParola     from "./pages/UitareParola";
-import ResetareParola   from "./pages/ResetareParola";
 import { ToastProvider } from "./components/Toast";
 import Footer    from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import ScrollToTopBtn from "./components/ScrollToTopBtn";
+
+const Home = lazy(() => import("./pages/Home"));
+const Hoteluri = lazy(() => import("./pages/Hoteluri"));
+const HotelDetalii = lazy(() => import("./pages/HotelDetalii"));
+const Autentificare = lazy(() => import("./pages/Autentificare"));
+const Rezervare = lazy(() => import("./pages/Rezervare"));
+const RezervareSucces = lazy(() => import("./pages/RezervareSucces"));
+const RezervareAnulat = lazy(() => import("./pages/RezervareAnulat"));
+const ProfilUtilizator = lazy(() => import("./pages/ProfilUtilizator"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const UitareParola = lazy(() => import("./pages/UitareParola"));
+const ResetareParola = lazy(() => import("./pages/ResetareParola"));
 
 function NotFound() {
   return (
@@ -47,6 +49,7 @@ function AnimatedRoutes() {
   const location = useLocation();
   return (
     <div key={location.pathname} style={{ animation: "pageFade 0.18s ease" }}>
+      <Suspense fallback={<div role="status" style={{ minHeight: "60vh", padding: "120px 24px", textAlign: "center" }}>Se încarcă pagina…</div>}>
       <Routes>
         <Route path="/"              element={<Home />} />
         <Route path="/hoteluri"      element={<Hoteluri />} />
@@ -62,6 +65,7 @@ function AnimatedRoutes() {
         <Route path="/resetare-parola" element={<ResetareParola />} />
         <Route path="*"              element={<NotFound />} />
       </Routes>
+      </Suspense>
     </div>
   );
 }

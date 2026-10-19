@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#ede8df"/>
+  <g fill="none" stroke="#9b7d42" stroke-width="6" stroke-linejoin="round">
+    <path d="M300 330V155h200v175M275 330h250M375 330v-65h50v65"/>
+    <path d="M335 190h30v30h-30zM435 190h30v30h-30zM335 245h30v30h-30zM435 245h30v30h-30z"/>
+  </g>
+  <text x="400" y="390" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#64583f">Imagine indisponibilă</text>
+</svg>

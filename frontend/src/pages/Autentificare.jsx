@@ -1,3 +1,5 @@
+import { hotelDemoImages } from '../utils/demoImages';
+import { saveSession } from '../utils/session';
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
@@ -51,9 +53,7 @@ export default function Autentificare() {
       const data = await res.json();
       if (!res.ok) { setEroare(data.eroare || "Date incorecte."); return; }
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("utilizator", JSON.stringify(data.utilizator));
-      window.dispatchEvent(new Event("utilizator-update"));
+      saveSession(data.token, data.utilizator);
 
       // Curățăm sessionStorage după login reușit
       sessionStorage.removeItem("returnTo");
@@ -66,13 +66,6 @@ export default function Autentificare() {
       setLoading(false);
     }
   };
-
-  const DOMENII_ACCEPTATE = [
-    'gmail.com','yahoo.com','yahoo.ro','hotmail.com','outlook.com',
-    'icloud.com','live.com','protonmail.com','proton.me','me.com',
-    'mail.com','gmx.com','zoho.com','aol.com','ymail.com',
-    'googlemail.com','hotmail.ro','live.ro','msn.com',
-  ];
 
   // ── Register ───────────────────────────────────────────────────────────
   const handleRegister = async (e) => {
@@ -87,9 +80,8 @@ export default function Autentificare() {
     if (regParola.length < 6) {
       setEroare("Parola trebuie să aibă cel puțin 6 caractere."); return;
     }
-    const domeniu = regEmail.split('@')[1]?.toLowerCase();
-    if (!domeniu || !DOMENII_ACCEPTATE.includes(domeniu)) {
-      setEroare("Folosește o adresă de email reală: Gmail, Yahoo, Outlook, iCloud etc."); return;
+    if (new TextEncoder().encode(regParola).length > 72) {
+      setEroare("Parola poate avea maximum 72 de octeți UTF-8."); return;
     }
     try {
       setLoading(true);
@@ -218,6 +210,9 @@ export default function Autentificare() {
   };
 
   const fProps = (field, setter, value, type = "text") => ({
+    id: field,
+    name: field,
+    autoComplete: ({ email: "email", parola: "current-password", lemail: "email", lpass: "current-password", rnume: "name", remail: "email", rtel: "tel", rpass: "new-password", rpass2: "new-password" })[field],
     style: type === "password" ? s.inputPass(field) : s.input(field),
     type, value,
     onChange: e => setter(e.target.value),
@@ -226,11 +221,11 @@ export default function Autentificare() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", overflow: "hidden" }}>
+    <div className="auth-page" style={{ minHeight: "100vh", display: "flex", overflow: "hidden" }}>
 
       {/* ── PANEL STÂNGA — imagine + branding ── */}
       <div style={{ flex: "0 0 54%", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", padding: "48px 56px" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "url('https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=85')", backgroundSize: "cover", backgroundPosition: "center", animation: "heroScale 12s ease forwards" }} />
+        <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${hotelDemoImages[1]})`, backgroundSize: "cover", backgroundPosition: "center", animation: "heroScale 12s ease forwards" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg, rgba(10,14,35,0.92) 0%, rgba(10,14,35,0.72) 55%, rgba(10,14,35,0.88) 100%)" }} />
 
         {/* Tagline + features */}
@@ -245,7 +240,7 @@ export default function Autentificare() {
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {[
               "Rezervare gratuită, fără taxe ascunse",
-              "Anulare flexibilă — rambursare 100%",
+              "Anulare din cont, conform condițiilor rezervării",
               "Plată securizată prin Stripe",
             ].map((f, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -268,7 +263,7 @@ export default function Autentificare() {
       </div>
 
       {/* ── PANEL DREAPTA — formular ── */}
-      <div style={{ flex: 1, background: "#F8F6F1", display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 56px", overflowY: "auto" }}>
+      <div className="auth-form-panel" style={{ flex: 1, background: "#F8F6F1", display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 56px", overflowY: "auto" }}>
         <div style={{ width: "100%", maxWidth: "400px" }}>
 
           <div style={{ marginBottom: "28px" }}>
@@ -292,7 +287,7 @@ export default function Autentificare() {
             </button>
           </div>
 
-          <div style={s.body}>
+          <div className="auth-form-body" style={s.body}>
             {eroare && <div style={s.eroareBox}>⚠ {eroare}</div>}
             {succes && <div style={s.succesBox}>✓ {succes}</div>}
 
@@ -300,12 +295,12 @@ export default function Autentificare() {
             {tab === "login" && (
               <form onSubmit={handleLogin}>
                 <div style={s.fieldWrap}>
-                  <label style={s.label}>Email</label>
+                  <label htmlFor="lemail" style={s.label}>Email</label>
                   <input {...fProps("lemail", setLoginEmail, loginEmail, "email")}
                     placeholder="adresa@email.com" />
                 </div>
                 <div style={s.fieldWrap}>
-                  <label style={s.label}>Parolă</label>
+                  <label htmlFor="lpass" style={s.label}>Parolă</label>
                   <div style={s.inputWrap}>
                     <input {...fProps("lpass", setLoginParola, loginParola,
                       showPass ? "text" : "password")}
@@ -333,29 +328,29 @@ export default function Autentificare() {
             {tab === "register" && (
               <form onSubmit={handleRegister}>
                 <div style={s.fieldWrap}>
-                  <label style={s.label}>Nume complet *</label>
+                  <label htmlFor="rnume" style={s.label}>Nume complet *</label>
                   <input {...fProps("rnume", setRegNume, regNume)}
                     placeholder="Ion Popescu" />
                 </div>
                 <div style={s.fieldWrap}>
-                  <label style={s.label}>Email *</label>
+                  <label htmlFor="remail" style={s.label}>Email *</label>
                   <input {...fProps("remail", setRegEmail, regEmail, "email")}
                     placeholder="adresa@email.com" />
                 </div>
                 <div style={s.fieldWrap}>
-                  <label style={s.label}>Telefon <span style={{ color: "rgba(26,26,46,0.3)" }}>(opțional)</span></label>
+                  <label htmlFor="rtel" style={s.label}>Telefon <span style={{ color: "rgba(26,26,46,0.3)" }}>(opțional)</span></label>
                   <input {...fProps("rtel", setRegTelefon, regTelefon, "tel")}
                     placeholder="07xx xxx xxx" />
                 </div>
-                <div style={s.row}>
+                <div className="form-columns" style={s.row}>
                   <div style={s.fieldWrap}>
-                    <label style={s.label}>Parolă *</label>
+                    <label htmlFor="rpass" style={s.label}>Parolă *</label>
                     <input {...fProps("rpass", setRegParola, regParola,
                       showPass ? "text" : "password")}
                       placeholder="min. 6 caractere" />
                   </div>
                   <div style={s.fieldWrap}>
-                    <label style={s.label}>Confirmă *</label>
+                    <label htmlFor="rpass2" style={s.label}>Confirmă *</label>
                     <input {...fProps("rpass2", setRegParola2, regParola2,
                       showPass ? "text" : "password")}
                       placeholder="repetă parola" />

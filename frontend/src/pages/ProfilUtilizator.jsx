@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { downloadReservation } from '../utils/downloadReservation';
+import { useSession } from '../hooks/useSession';
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import { API_URL } from "../api";
@@ -74,14 +76,7 @@ export default function ProfilUtilizator() {
   const esteRezervari = location.pathname === "/rezervarile-mele";
 
   // ── User ───────────────────────────────────────────────────────────────
-  const utilizator = (() => {
-    try {
-      const val = localStorage.getItem("utilizator");
-      if (!val || val === "undefined") return null;
-      return JSON.parse(val);
-    } catch { return null; }
-  })();
-  const token = localStorage.getItem("token");
+  const { utilizator, token } = useSession();
 
   // ── State ──────────────────────────────────────────────────────────────
   const [rezervari, setRezervari]       = useState([]);
@@ -94,7 +89,7 @@ export default function ProfilUtilizator() {
   const [hovBtn, setHovBtn]             = useState(null);
 
   // ── Editare profil ────────────────────────────────────────────────────
-  const [profilForm, setProfilForm]     = useState({ nume_complet: "", telefon: "", email_marketing: false });
+  const [profilForm, setProfilForm]     = useState(() => ({ nume_complet: utilizator?.nume_complet || "", telefon: utilizator?.telefon || "", email_marketing: !!utilizator?.email_marketing }));
   const [profilLoading, setProfilLoad]  = useState(false);
   const [profilMsg, setProfilMsg]       = useState(null); // { ok, text }
 
@@ -103,19 +98,15 @@ export default function ProfilUtilizator() {
     if (!utilizator || !token) {
       sessionStorage.setItem("returnTo", "/profil");
       navigate("/autentificare", { state: { from: "/profil" } });
-    } else {
-      setProfilForm({
-        nume_complet: utilizator.nume_complet || "",
-        telefon: utilizator.telefon || "",
-        email_marketing: !!utilizator.email_marketing,
-      });
     }
-  }, []);
+  }, [navigate, token, utilizator]);
 
   // ── Fetch rezervări ────────────────────────────────────────────────────
-  const fetchRezervari = async () => {
+  const fetchRezervari = useCallback(async () => {
+    if (!token) return;
     try {
       setLoading(true);
+      setEroare(null);
       const res = await fetch(`${API_URL}/api/rezervari/mele`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -127,9 +118,9 @@ export default function ProfilUtilizator() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  useEffect(() => { fetchRezervari(); }, []);
+  useEffect(() => { fetchRezervari(); }, [fetchRezervari]);
 
   // ── Salvează profil ───────────────────────────────────────────────────
   const handleSalvaProfil = async () => {
@@ -162,19 +153,7 @@ export default function ProfilUtilizator() {
   // ── Descarcă factură PDF ──────────────────────────────────────────────
   const handleDescarcarFactura = async (idRezervare) => {
     try {
-      const res = await fetch(`${API_URL}/api/rezervari/${idRezervare}/factura`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      const url  = window.URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = `Factura_HoteluriRo_${idRezervare}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      await downloadReservation(idRezervare, token);
     } catch {
       setEroare("Nu s-a putut genera factura. Încearcă din nou.");
     }
@@ -457,18 +436,18 @@ export default function ProfilUtilizator() {
     ?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
 
   return (
-    <div style={s.page}>
+    <div className="profile-page" style={s.page}>
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <div style={s.header}>
         <div style={s.headerDecor} />
-        <div style={s.headerInner}>
+        <div className="page-heading" style={s.headerInner}>
           <div style={s.breadcrumb}>
             <Link to="/" style={s.breadLink}>Acasă</Link>
             <span>›</span>
             <span style={{ color: "#C4A050" }}>{esteRezervari ? "Rezervările mele" : "Profilul meu"}</span>
           </div>
-          <div style={s.headerTop}>
+          <div className="profile-header" style={s.headerTop}>
             <div>
               <h1 style={s.headerTitle}>{utilizator?.nume_complet}</h1>
               <p style={s.headerSub}>{utilizator?.email}
@@ -481,7 +460,7 @@ export default function ProfilUtilizator() {
       </div>
 
       {/* ── LAYOUT ──────────────────────────────────────────────────────── */}
-      <div style={s.layout}>
+      <div className="page-layout" style={s.layout}>
 
         {/* ── TABS ─────────────────────────────────────────────────────── */}
         <div style={{ display: "flex", borderBottom: "1px solid rgba(196,160,80,0.15)", marginBottom: "32px" }}>
@@ -606,7 +585,7 @@ export default function ProfilUtilizator() {
         <>
 
         {/* Statistici */}
-        <div style={s.statsRow}>
+        <div className="profile-stats" style={s.statsRow}>
           {[
             { key: "toate",        label: "Total" },
             { key: "confirmata",   label: "Confirmate" },
@@ -671,7 +650,7 @@ export default function ProfilUtilizator() {
               onMouseLeave={() => setHovCard(null)}>
 
               {/* Head */}
-              <div style={s.cardHead}>
+              <div className="reservation-header" style={s.cardHead}>
                 <div style={s.cardHeadLeft}>
                   <div style={s.numeHotel}>{r.nume_hotel}</div>
                   <div style={s.orasHotel}>📍 {r.nume_oras}</div>
@@ -690,7 +669,7 @@ export default function ProfilUtilizator() {
               </div>
 
               {/* Body */}
-              <div style={s.cardBody}>
+              <div className="reservation-info" style={s.cardBody}>
                 <div style={s.infoItem}>
                   <div style={s.infoLabel}>Tip cameră</div>
                   <div style={s.infoValue}>{r.tip_camera}</div>
@@ -727,7 +706,7 @@ export default function ProfilUtilizator() {
               </div>
 
               {/* Footer */}
-              <div style={s.cardFoot}>
+              <div className="reservation-footer" style={s.cardFoot}>
                 <span style={s.creataLa}>
                   Rezervare #{r.id_rezervare} · creată pe {formatData(r.data_crearii)}
                 </span>
@@ -773,7 +752,7 @@ export default function ProfilUtilizator() {
       {/* ── DIALOG CONFIRMARE ANULARE ────────────────────────────────────── */}
       {confirmAnulare && (
         <div style={s.overlay} onClick={() => setConfirm(null)}>
-          <div style={s.dialog} onClick={e => e.stopPropagation()}>
+          <div className="dialog-card" style={s.dialog} onClick={e => e.stopPropagation()}>
             <div style={s.dialogHead}>
               <div style={s.dialogTitle}>Confirmi anularea?</div>
             </div>
