@@ -47,7 +47,7 @@ function createHoteluriRouter(db) {
 
     router.get('/api/hoteluri', (req, res) => {
         const { oras, stele_min, pret_max, sort } = req.query;
-        let query = `SELECT h.id_hotel, h.nume_hotel, h.adresa, h.stele, h.descriere,
+        let query = `SELECT h.id_hotel, h.id_oras, h.nume_hotel, h.adresa, h.stele, h.descriere, h.latitudine, h.longitudine,
                             h.imagine_url, h.imagine_2, h.imagine_3, h.oferta_activa, o.nume_oras, MIN(cc.pret_pe_noapte) AS pret_minim
                      FROM Hoteluri h
                      JOIN Orase o ON h.id_oras = o.id_oras

@@ -21,7 +21,7 @@ before(async () => {
     created = true;
     pool = mysql.createPool({ ...config, database: databaseName, dateStrings: true, connectionLimit: 6 });
     await initialize({ config: { ...config, database: databaseName }, demo: true });
-    await pool.execute("INSERT INTO Utilizatori (id_utilizator,nume_complet,email,parola) VALUES (1,'Test','test@example.invalid','hash-fictiv')");
+    await pool.execute("INSERT INTO Utilizatori (id_utilizator,nume_complet,email,parola) VALUES (1,'Test','test@example.invalid','hash-fictiv'),(2,'Test doi','test2@example.invalid','hash-fictiv')");
     await pool.execute("INSERT INTO Coduri_Reducere (id_cod,cod,procent_reducere,utilizari_maxime) VALUES (1,'TEST10',10,1),(2,'TEST20',20,5)");
     await pool.execute('UPDATE Categorii_Camere SET pret_pe_noapte=199.99 WHERE id_categorie=1');
     await pool.execute("INSERT INTO Camere (id_camera,id_categorie,numar_camera,status_camera) VALUES (3,1,'103','inactiva')");
@@ -121,4 +121,132 @@ check('un utilizator nu poate anula rezervarea altuia', async () => {
     const [[row]] = await pool.execute('SELECT status_rezervare FROM Rezervari WHERE id_rezervare=?', [result.id_rezervare]);
     assert.equal(row.status_rezervare, 'confirmata');
     await pool.execute('DELETE FROM Rezervari');
+});
+
+
+check('doi utilizatori pe aceeași cameră: unul reușește, celălalt primește conflict', async () => {
+    const results = await Promise.allSettled([bookings.book(1, input), bookings.book(2, input)]);
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+    assert.equal(results.find(result => result.status === 'rejected').reason.status, 409);
+    const [rows] = await pool.execute('SELECT id_utilizator FROM Rezervari');
+    assert.equal(rows.length, 1);
+    assert.ok([1, 2].includes(rows[0].id_utilizator));
+    await pool.execute('DELETE FROM Rezervari');
+});
+
+check('două camere diferite pot fi rezervate simultan în aceeași perioadă', async () => {
+    const results = await Promise.all([
+        bookings.book(1, input), bookings.book(2, { ...input, id_camera: 2 }),
+    ]);
+    assert.notEqual(results[0].id_rezervare, results[1].id_rezervare);
+    const [[row]] = await pool.execute('SELECT COUNT(*) AS n FROM Rezervari');
+    assert.equal(row.n, 2);
+    await pool.execute('DELETE FROM Rezervari');
+});
+
+check('zece cereri simultane nu supravând ultima cameră', async () => {
+    const results = await Promise.allSettled(Array.from({ length: 10 }, (_, index) => bookings.book(index % 2 + 1, input)));
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+    assert.ok(results.filter(result => result.status === 'rejected').every(result => result.reason.status === 409));
+    const [[row]] = await pool.execute('SELECT COUNT(*) AS n FROM Rezervari');
+    assert.equal(row.n, 1);
+    await pool.execute('DELETE FROM Rezervari');
+});
+
+check('hotel nou prin API: coordonate pe hartă și camere create împreună cu categoria', async () => {
+    const { createApp } = require('../src/app');
+    const jwt = require('jsonwebtoken');
+    await pool.execute("INSERT INTO Utilizatori (id_utilizator,nume_complet,email,parola,rol) VALUES (3,'Admin Demo','admin@example.invalid','hash-fictiv','admin_hotel')");
+    const db = {
+        promise: () => pool,
+        query(sql, params, callback) {
+            if (typeof params === 'function') { callback = params; params = []; }
+            pool.query(sql, params).then(([rows]) => callback(null, rows), callback);
+        },
+    };
+    const app = createApp({ db, stripe: null,
+        config: { jwtSecret: 'catalog-test-secret', siteUrl: 'http://localhost:5173' },
+        transport: { sendMail: async () => {} },
+    });
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise(resolve => server.once('listening', resolve));
+    const token = jwt.sign({ id: 3 }, 'catalog-test-secret');
+    const request = async (path, body) => {
+        const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`, {
+            method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+        });
+        return { status: response.status, body: await response.json() };
+    };
+    try {
+        const values = { id_oras: 1, nume_hotel: 'Hotel fictiv nou', stele: 3, latitudine: 45.65, longitudine: 25.60, imagine_url: 'demo:modern' };
+        assert.equal((await request('/api/admin/hoteluri', { ...values, latitudine: undefined })).status, 400);
+        const hotel = await request('/api/admin/hoteluri', values);
+        assert.equal(hotel.status, 201);
+        const hotelId = hotel.body.id_hotel;
+        const catalog = await request('/api/hoteluri');
+        const listed = catalog.body.find(row => row.id_hotel === hotelId);
+        assert.equal(Number(listed.latitudine), 45.65);
+        assert.equal(Number(listed.longitudine), 25.60);
+        assert.equal(listed.id_oras, 1);
+        const map = await request('/api/hoteluri/harta');
+        assert.equal(map.status, 200);
+        assert.equal(Number(map.body.find(row => row.id_hotel === hotelId).latitudine), 45.65);
+        const category = await request('/api/admin/categorii', { id_hotel: hotelId, denumire: 'Dublă', capacitate: 2, pret_pe_noapte: '250.50', numar_camere: 3 });
+        assert.equal(category.status, 201);
+        const [rooms] = await pool.execute('SELECT * FROM Camere WHERE id_categorie=?', [category.body.id_categorie]);
+        assert.equal(rooms.length, 3);
+        assert.equal(new Set(rooms.map(room => room.numar_camera)).size, 3);
+        assert.ok(rooms.every(room => room.status_camera === 'activa'));
+        const available = await request(`/api/hoteluri/${hotelId}/disponibilitate?checkin=2090-11-10&checkout=2090-11-12`);
+        assert.equal(available.body[0].camere_libere, 3);
+        const saved = await bookings.book(2, { ...input, id_camera: rooms[0].id_camera });
+        assert.equal(saved.pret_total, 501);
+        const after = await request(`/api/hoteluri/${hotelId}/disponibilitate?checkin=2090-11-10&checkout=2090-11-12`);
+        assert.equal(after.body[0].camere_libere, 2);
+    } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+check('ștergerea hotelului sau categoriei cu rezervări este blocată, inclusiv după anulare', async () => {
+    const { createCatalogService } = require('../src/services/catalog');
+    const catalog = createCatalogService(pool);
+    const saved = await bookings.book(1, input);
+    await bookings.changeStatus(saved.id_rezervare, 'anulata');
+    await assert.rejects(catalog.deleteHotel(1), error => error.status === 409);
+    await assert.rejects(catalog.deleteCategory(1), error => error.status === 409);
+    const [[row]] = await pool.execute('SELECT status_rezervare FROM Rezervari WHERE id_rezervare=?', [saved.id_rezervare]);
+    assert.equal(row.status_rezervare, 'anulata');
+    await pool.execute('DELETE FROM Rezervari WHERE id_rezervare=?', [saved.id_rezervare]);
+});
+
+check('un hotel fără rezervări poate fi șters împreună cu inventarul său', async () => {
+    const { createCatalogService } = require('../src/services/catalog');
+    const catalog = createCatalogService(pool);
+    const id = await catalog.createHotel({ id_oras: 1, nume_hotel: 'Hotel temporar', stele: 3, latitudine: 45, longitudine: 25 });
+    const category = await catalog.createCategory({ id_hotel: id, denumire: 'Dublă', pret_pe_noapte: 100, capacitate: 2, numar_camere: 2 });
+    await catalog.deleteHotel(id);
+    const [rooms] = await pool.execute('SELECT * FROM Camere WHERE id_categorie=?', [category.id_categorie]);
+    assert.equal(rooms.length, 0);
+});
+
+check('ștergerea concurentă cu rezervarea nu elimină istoricul unei rezervări create', async () => {
+    const { createCatalogService } = require('../src/services/catalog');
+    const catalog = createCatalogService(pool);
+    const id = await catalog.createHotel({ id_oras: 1, nume_hotel: 'Hotel concurență', stele: 3, latitudine: 45, longitudine: 25 });
+    const category = await catalog.createCategory({ id_hotel: id, denumire: 'Dublă', pret_pe_noapte: 100, capacitate: 2, numar_camere: 1 });
+    const [[room]] = await pool.execute('SELECT id_camera FROM Camere WHERE id_categorie=?', [category.id_categorie]);
+    const [booking, deletion] = await Promise.allSettled([
+        bookings.book(1, { ...input, id_camera: room.id_camera }), catalog.deleteHotel(id),
+    ]);
+    if (booking.status === 'fulfilled') {
+        assert.equal(deletion.status, 'rejected');
+        assert.equal(deletion.reason.status, 409);
+        const [saved] = await pool.execute('SELECT id_rezervare FROM Rezervari WHERE id_rezervare=?', [booking.value.id_rezervare]);
+        assert.equal(saved.length, 1);
+        await pool.execute('DELETE FROM Rezervari WHERE id_rezervare=?', [booking.value.id_rezervare]);
+        await catalog.deleteHotel(id);
+    } else {
+        assert.equal(booking.reason.status, 404);
+        assert.equal(deletion.status, 'fulfilled');
+    }
 });

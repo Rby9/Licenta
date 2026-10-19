@@ -1,7 +1,9 @@
+const { createCatalogService } = require('../../services/catalog');
 const { escapeHTML } = require('../../services/html');
 const { integer, money, date } = require('../../services/validation');
 
 function registerRoutes(app, { db, verificaToken, verificaRol, oriceAdmin, adminHotel, adminBooking, adminMarketing, superAdmin, upload, uploadGalerie, emailTransporter, config, bookings }) {
+    const catalog = createCatalogService(db);
     const EMAIL_FROM = config.emailFrom;
     const SITE_URL = config.siteUrl;
 
@@ -83,30 +85,14 @@ function registerRoutes(app, { db, verificaToken, verificaRol, oriceAdmin, admin
         );
     });
 
-    app.post('/api/admin/hoteluri', verificaToken, adminHotel, (req, res) => {
-        const { id_oras, nume_hotel, adresa, stele, descriere, imagine_url, imagine_2, imagine_3 } = req.body;
-        if (!id_oras || !nume_hotel)
-            return res.status(400).json({ eroare: 'Orașul și numele sunt obligatorii.' });
-        db.query(
-            'INSERT INTO Hoteluri (id_oras,nume_hotel,adresa,stele,descriere,imagine_url,imagine_2,imagine_3) VALUES (?,?,?,?,?,?,?,?)',
-            [id_oras, nume_hotel, adresa||null, stele||3, descriere||null, imagine_url||null, imagine_2||null, imagine_3||null],
-            (err, result) => {
-                if (err) return res.status(500).json({ eroare: 'Eroare server.' });
-                res.status(201).json({ mesaj: 'Hotel adăugat.', id_hotel: result.insertId });
-            }
-        );
+    app.post('/api/admin/hoteluri', verificaToken, adminHotel, async (req, res) => {
+        const id = await catalog.createHotel(req.body);
+        res.status(201).json({ mesaj: 'Hotel adăugat.', id_hotel: id });
     });
 
-    app.put('/api/admin/hoteluri/:id', verificaToken, adminHotel, (req, res) => {
-        const { id_oras, nume_hotel, adresa, stele, descriere, imagine_url, imagine_2, imagine_3 } = req.body;
-        db.query(
-            'UPDATE Hoteluri SET id_oras=?,nume_hotel=?,adresa=?,stele=?,descriere=?,imagine_url=?,imagine_2=?,imagine_3=? WHERE id_hotel=?',
-            [id_oras, nume_hotel, adresa||null, stele||3, descriere||null, imagine_url||null, imagine_2||null, imagine_3||null, req.params.id],
-            (err) => {
-                if (err) return res.status(500).json({ eroare: 'Eroare server.' });
-                res.json({ mesaj: 'Hotel actualizat.' });
-            }
-        );
+    app.put('/api/admin/hoteluri/:id', verificaToken, adminHotel, async (req, res) => {
+        await catalog.updateHotel(req.params.id, req.body);
+        res.json({ mesaj: 'Hotel actualizat.' });
     });
 
     app.post('/api/admin/hoteluri/:id/poze', verificaToken, adminHotel, upload.array('poze', 3), (req, res) => {
@@ -135,11 +121,9 @@ function registerRoutes(app, { db, verificaToken, verificaRol, oriceAdmin, admin
         );
     });
 
-    app.delete('/api/admin/hoteluri/:id', verificaToken, adminHotel, (req, res) => {
-        db.query('DELETE FROM Hoteluri WHERE id_hotel=?', [req.params.id], (err) => {
-            if (err) return res.status(500).json({ eroare: 'Eroare server.' });
-            res.json({ mesaj: 'Hotel șters.' });
-        });
+    app.delete('/api/admin/hoteluri/:id', verificaToken, adminHotel, async (req, res) => {
+        await catalog.deleteHotel(req.params.id);
+        res.json({ mesaj: 'Hotel șters.' });
     });
 
     app.post('/api/admin/orase', verificaToken, adminHotel, (req, res) => {
@@ -155,19 +139,9 @@ function registerRoutes(app, { db, verificaToken, verificaRol, oriceAdmin, admin
         });
     });
 
-    app.post('/api/admin/categorii', verificaToken, adminHotel, (req, res) => {
-        const { id_hotel, denumire, capacitate, pret_pe_noapte, descriere } = req.body;
-        integer(id_hotel, 'Hotel'); integer(capacitate ?? 2, 'Capacitate'); money(pret_pe_noapte);
-        if (!id_hotel || !denumire || !pret_pe_noapte)
-            return res.status(400).json({ eroare: 'Câmpuri obligatorii lipsă.' });
-        db.query(
-            'INSERT INTO Categorii_Camere (id_hotel,denumire,capacitate,pret_pe_noapte,descriere) VALUES (?,?,?,?,?)',
-            [id_hotel, denumire, capacitate||2, pret_pe_noapte, descriere||null],
-            (err, result) => {
-                if (err) return res.status(500).json({ eroare: 'Eroare server.' });
-                res.status(201).json({ mesaj: 'Categorie adăugată.', id_categorie: result.insertId });
-            }
-        );
+    app.post('/api/admin/categorii', verificaToken, adminHotel, async (req, res) => {
+        const category = await catalog.createCategory(req.body);
+        res.status(201).json({ mesaj: 'Categoria și camerele au fost adăugate.', ...category });
     });
 
     app.put('/api/admin/categorii/:id', verificaToken, adminHotel, (req, res) => {
@@ -185,11 +159,9 @@ function registerRoutes(app, { db, verificaToken, verificaRol, oriceAdmin, admin
         );
     });
 
-    app.delete('/api/admin/categorii/:id', verificaToken, adminHotel, (req, res) => {
-        db.query('DELETE FROM Categorii_Camere WHERE id_categorie=?', [req.params.id], (err) => {
-            if (err) return res.status(500).json({ eroare: 'Eroare server.' });
-            res.json({ mesaj: 'Categorie ștearsă.' });
-        });
+    app.delete('/api/admin/categorii/:id', verificaToken, adminHotel, async (req, res) => {
+        await catalog.deleteCategory(req.params.id);
+        res.json({ mesaj: 'Categorie ștearsă.' });
     });
 
     app.patch('/api/admin/hoteluri/:id/oferta', verificaToken, verificaRol('super_admin', 'admin_hotel', 'admin_marketing'), (req, res) => {

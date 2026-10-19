@@ -1,3 +1,4 @@
+const { withTransaction } = require('./transaction');
 const { HttpError } = require('./errors');
 const { reservationView } = require('./reservation-view');
 const { integer, interval, money } = require('./validation');
@@ -9,26 +10,7 @@ function bookingInput(input, { future = true } = {}) {
         codeId: input.id_cod == null || input.id_cod === '' ? null : integer(input.id_cod, 'Cod reducere') };
 }
 function createBookingService(pool) {
-    const promisePool = () => typeof pool.promise === 'function' ? pool.promise() : pool;
-    async function transaction(work) {
-        const connection = await promisePool().getConnection();
-        let reusable = true;
-        try {
-            await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
-            await connection.beginTransaction();
-            const result = await work(connection);
-            await connection.commit();
-            return result;
-        } catch (error) {
-            try { await connection.rollback(); }
-            catch {
-                // O conexiune cu tranzacție incertă nu trebuie să reintre în pool.
-                reusable = false;
-                connection.destroy();
-            }
-            throw error;
-        } finally { if (reusable) connection.release(); }
-    }
+    const transaction = work => withTransaction(pool, work);
     async function room(connection, id) {
         const [locked] = await connection.execute('SELECT * FROM Camere WHERE id_camera=? FOR UPDATE', [id]);
         if (!locked.length) throw new HttpError(404, 'Camera nu există.');
