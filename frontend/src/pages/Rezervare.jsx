@@ -404,7 +404,7 @@ export default function Rezervare() {
             </div>
           </div>
 
-          {eroare && <div style={s.eroare}>⚠ {eroare}</div>}
+          {eroare && <div role="alert" style={s.eroare}>⚠ {eroare}</div>}
 
           <button style={s.btnPlata} onClick={handlePlata} disabled={loadingPlata}>
             {loadingPlata ? "Se procesează..." :

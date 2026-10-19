@@ -1067,7 +1067,7 @@ export default function HotelDetalii() {
               {[
                 "Anulare din cont (peste 24h înainte)",
                 "Plată securizată prin Stripe",
-                "Suport Lun–Dum · 08:00–22:00",
+                "Documente PDF în profil",
               ].map((badge, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ color: "#C4A050", fontSize: "0.7rem", flexShrink: 0 }}>✓</span>

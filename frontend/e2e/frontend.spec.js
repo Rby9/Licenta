@@ -171,3 +171,63 @@ for (const width of [390, 1440]) test(`filtre hoteluri: combinare, sortare, rezu
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   expect(failures).toEqual([]);
 });
+
+for (const method of ['online_total', 'avans_online']) test(`rezervare ${method}: total corect și eroare de plată vizibilă`, async ({ page }) => {
+  const failures = await mockCatalog(page);
+  let submitted;
+  await page.route('**/api/camere/disponibila?*', route => route.fulfill({ json: { id_camera: 7 } }));
+  await page.route('**/api/plati/creare-sesiune', async route => {
+    submitted = route.request().postDataJSON();
+    await route.fulfill({ status: 503, json: { eroare: 'Plățile sunt temporar indisponibile.' } });
+  });
+  await page.goto('/rezervare?hotel_id=1&categorie_id=1&checkin=2090-11-10&checkout=2090-11-12&guests=2');
+  if (method === 'avans_online') await page.getByText('Avans 30% + rest la cazare', { exact: true }).click();
+  const pay = page.getByRole('button', { name: method === 'avans_online' ? /Plătește avans.*150/ : /Plătește 500/ });
+  await expect(pay).toBeVisible();
+  // Only mock data and mock API calls; no real payment or booking is submitted.
+  await page.getByRole('checkbox').check();
+  await pay.click();
+  await expect(page.getByRole('alert')).toContainText('Plățile sunt temporar indisponibile.');
+  expect(submitted).toMatchObject({ id_camera: 7, guests: 2, pret_total: 500, nopti: 2,
+    metoda_plata: method, suma_avans: method === 'avans_online' ? 150 : null });
+  await expect(pay).toBeEnabled();
+  expect(failures).toEqual([]);
+});
+
+test('rezervare: camera ocupată între timp oprește inițierea plății', async ({ page }) => {
+  await mockCatalog(page);
+  let payments = 0;
+  await page.route('**/api/camere/disponibila?*', route => route.fulfill({ status: 409, json: { eroare: 'Camera nu mai este disponibilă.' } }));
+  await page.route('**/api/plati/creare-sesiune', async route => {
+    payments++;
+    await route.fulfill({ status: 500, json: {} });
+  });
+  await page.goto('/rezervare?hotel_id=1&categorie_id=1&checkin=2090-11-10&checkout=2090-11-12&guests=2');
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: /Plătește 500/ }).click();
+  await expect(page.getByRole('alert')).toContainText('Camera nu mai este disponibilă.');
+  expect(payments).toBe(0);
+});
+
+test('pagina principală afișează cifrele catalogului și nu inventează statistici la eroare', async ({ page }) => {
+  await mockCatalog(page);
+  let available = true;
+  await page.route('**/api/orase', route => route.fulfill(available ? { json: [
+    { id_oras: 1, nume_oras: 'Brașov', numar_hoteluri: 4 },
+    { id_oras: 2, nume_oras: 'Sibiu', numar_hoteluri: 3 },
+    { id_oras: 3, nume_oras: 'Arad', numar_hoteluri: 0 },
+  ] } : { status: 503, json: { eroare: 'Indisponibil' } }));
+  await page.goto('/');
+  const stats = page.getByRole('region', { name: 'Catalog și funcționalități' });
+  await stats.scrollIntoViewIfNeeded();
+  await expect(stats.getByText('7', { exact: true })).toBeVisible();
+  await expect(stats.getByText('2', { exact: true })).toBeVisible();
+  await expect(stats.getByText('Hoteluri în catalog', { exact: true })).toBeVisible();
+  await expect(stats.getByText('Orașe cu hoteluri', { exact: true })).toBeVisible();
+  await expect(page.getByText('Recenzii verificate', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Suport 24/7', { exact: true })).toHaveCount(0);
+  available = false;
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText('Nu s-a putut conecta la server.');
+  await expect(stats.getByText('—', { exact: true })).toHaveCount(2);
+});

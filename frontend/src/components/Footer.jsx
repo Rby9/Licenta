@@ -35,7 +35,7 @@ export default function Footer() {
             HoteluriRo
           </div>
           <p style={{ fontFamily: "'Jost',sans-serif", fontSize: "0.83rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.8, maxWidth: "260px" }}>
-            Platforma națională de rezervări hoteliere premium. Descoperă România cu stil și eleganță.
+            Platformă demonstrativă de rezervări hoteliere. Descoperă România cu stil și eleganță.
           </p>
         </div>
 
@@ -59,10 +59,10 @@ export default function Footer() {
         {/* Informații */}
         <div>
           <div style={col.title}>Informații</div>
-          <span style={{ ...col.link, cursor: "default" }}>Rezervare gratuită</span>
-          <span style={{ ...col.link, cursor: "default" }}>Anulare flexibilă</span>
+          <span style={{ ...col.link, cursor: "default" }}>Rezervări online</span>
+          <span style={{ ...col.link, cursor: "default" }}>Anulare din cont</span>
           <span style={{ ...col.link, cursor: "default" }}>Plată securizată</span>
-          <span style={{ ...col.link, cursor: "default" }}>Suport 7/7</span>
+          <span style={{ ...col.link, cursor: "default" }}>Documente PDF</span>
         </div>
 
         {/* Contact */}
@@ -78,11 +78,7 @@ export default function Footer() {
             </a>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ flexShrink: 0 }}>◉</span>
-              <span>România, București</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ flexShrink: 0 }}>☎</span>
-              <span>+40 700 000 000</span>
+              <span>România</span>
             </div>
           </div>
           <div style={{
@@ -92,8 +88,8 @@ export default function Footer() {
             fontFamily: "'Jost',sans-serif", fontSize: "0.72rem",
             color: "rgba(255,255,255,0.35)", lineHeight: 1.6,
           }}>
-            Program suport:<br />
-            <span style={{ color: "#C4A050" }}>Lun – Dum · 08:00 – 22:00</span>
+            Proiect demonstrativ<br />
+            <span style={{ color: "#C4A050" }}>Nu oferă suport comercial.</span>
           </div>
         </div>
       </div>
@@ -105,7 +101,7 @@ export default function Footer() {
         display: "flex", justifyContent: "center", alignItems: "center",
       }}>
         <span style={{ fontFamily: "'Jost',sans-serif", fontSize: "0.75rem", color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em" }}>
-          © {new Date().getFullYear()} HoteluriRo — Platformă națională de rezervări hoteliere · Proiect de licență
+          © {new Date().getFullYear()} HoteluriRo — Rezervări hoteliere · Proiect de licență
         </span>
       </div>
     </footer>

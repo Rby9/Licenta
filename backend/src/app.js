@@ -24,7 +24,7 @@ function createApp(options = {}) {
         try { integer(value); next(); } catch (error) { next(error); }
     });
     const auth = createAuth(db, config.jwtSecret);
-    const uploads = createUploads();
+    const uploads = createUploads({ uploadsDir: options.uploadsDir });
     const email = createEmailService({ db, config, transport: options.transport });
     const bookings = options.bookings || createBookingService(db);
     const notify = async reservation => {

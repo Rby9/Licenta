@@ -74,9 +74,9 @@ function SkeletonCity() {
 }
 
 const FEATURES = [
-  { icon: "◈", title: "Prețuri garantate", desc: "Găsim cel mai bun tarif disponibil, fără taxe ascunse." },
-  { icon: "◉", title: "Anulare gratuită",  desc: "Flexibilitate totală — modifici sau anulezi oricând." },
-  { icon: "◆", title: "Suport 24/7",       desc: "Echipa noastră îți este alături în orice moment." },
+  { icon: "◈", title: "Prețuri transparente", desc: "Vezi tariful pe noapte și totalul sejurului înainte de plată." },
+  { icon: "◉", title: "Anulare din cont",  desc: "Poți anula cu peste 24 de ore înainte de check-in. Rambursarea plăților se verifică separat." },
+  { icon: "◆", title: "Rezervările tale", desc: "Urmărești rezervările din profil și descarci documentele PDF." },
 ];
 
 // ─── Scroll-triggered visibility hook ────────────────────────────────────
@@ -404,7 +404,7 @@ export default function Home() {
         <div style={s.heroOverlay} />
 
         <div style={s.heroContent}>
-          <span style={s.eyebrow}>Platformă oficială de rezervări hoteliere</span>
+          <span style={s.eyebrow}>Platformă de rezervări hoteliere</span>
 
           <h1 style={s.heroTitle}>
             Descoperă România<br />
@@ -473,7 +473,7 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════ STATS STRIP ════════════════════════════ */}
-      <div ref={statsRef} style={{ background: "#0A0E23", borderBottom: "1px solid rgba(196,160,80,0.1)" }}>
+      <div ref={statsRef} role="region" aria-label="Catalog și funcționalități" style={{ background: "#0A0E23", borderBottom: "1px solid rgba(196,160,80,0.1)" }}>
         <div style={{
           maxWidth: "960px", margin: "0 auto", padding: "36px 48px",
           display: "grid", gridTemplateColumns: "repeat(4,1fr)",
@@ -482,10 +482,10 @@ export default function Home() {
           transition: "opacity 0.75s ease, transform 0.75s ease",
         }}>
           {[
-            { target: 64,  suffix: "",  label: "Hoteluri partenere" },
-            { target: 10,  suffix: "",  label: "Orașe în România"   },
-            { target: 500, suffix: "+", label: "Recenzii verificate" },
-            { target: 98,  suffix: "%", label: "Clienți mulțumiți"  },
+            { target: orase.reduce((total, oras) => total + Number(oras.numar_hoteluri || 0), 0), label: "Hoteluri în catalog" },
+            { target: orase.filter(oras => Number(oras.numar_hoteluri) > 0).length, label: "Orașe cu hoteluri" },
+            { value: "Hartă", label: "Locații interactive" },
+            { value: "Profil", label: "Rezervări și documente" },
           ].map((st, i) => (
             <div key={i} style={{
               textAlign: "center",
@@ -493,7 +493,7 @@ export default function Home() {
               padding: "8px 0",
             }}>
               <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "2.6rem", fontWeight: 700, color: "#C4A050", lineHeight: 1 }}>
-                <Counter target={st.target} suffix={st.suffix} />
+                {st.target === undefined ? st.value : loading || eroare ? "—" : <Counter target={st.target} />}
               </div>
               <div style={{ fontFamily: "'Jost',sans-serif", fontSize: "0.72rem", color: "rgba(255,255,255,0.38)", letterSpacing: "0.14em", textTransform: "uppercase", marginTop: "8px" }}>
                 {st.label}
@@ -598,11 +598,11 @@ export default function Home() {
         <div style={s.secLine} />
 
         {eroare && (
-          <div style={s.errorBox}>
+          <div role="alert" style={s.errorBox}>
             <strong>⚠️ {eroare}</strong>
             <br />
             <small style={{ opacity: .8, marginTop: "8px", display: "block" }}>
-              Rulează în terminal: <code>cd backend &amp;&amp; node server.js</code>
+              Reîncarcă pagina sau încearcă din nou mai târziu.
             </small>
           </div>
         )}
