@@ -1,6 +1,25 @@
 const PDFDocument = require('pdfkit');
 const path = require('path');
 
+// Stelele sunt forme PDF, fără dependență de glifele disponibile în font.
+function drawHotelStars(doc, x, y, rating, color) {
+    const number = Number(rating);
+    const count = Number.isInteger(number) && number >= 1 && number <= 5 ? number : 0;
+    doc.save();
+    for (let star = 0; star < count; star++) {
+        const cx = x + star * 12 + 4.5, cy = y + 5;
+        for (let point = 0; point < 10; point++) {
+            const angle = -Math.PI / 2 + point * Math.PI / 5;
+            const radius = point % 2 === 0 ? 4.5 : 2;
+            const px = cx + Math.cos(angle) * radius, py = cy + Math.sin(angle) * radius;
+            if (point === 0) doc.moveTo(px, py); else doc.lineTo(px, py);
+        }
+        doc.closePath().fill(color);
+    }
+    doc.restore();
+    doc.font('R').fontSize(9).fillColor('#888888').text(count ? `(${count} ${count === 1 ? 'stea' : 'stele'})` : 'Clasificare neprecizata', x + count * 12, y);
+}
+
 function vatBreakdown(total, rate = 19) {
     const cents = Math.round(Number(total) * 100);
     if (!Number.isSafeInteger(cents) || cents < 0 || !Number.isFinite(rate) || rate < 0) throw new Error('Valoare TVA invalidă.');
@@ -37,12 +56,12 @@ const genereazaPDFBuffer = (r) => new Promise((resolve, reject) => {
     // Header
     doc.rect(0, 0, 595, 110).fill(DARK);
     doc.fontSize(28).font('RB').fillColor(GOLD).text('HoteluriRo', 50, 30);
-    doc.fontSize(9).font('R').fillColor('rgba(255,255,255,0.6)')
+    doc.fontSize(9).font('R').fillColor('#BDBECA')
        .text('Platforma nationala de rezervari hoteliere', 50, 65)
        .text('contact@hoteluriro.ro  ·  www.hoteluriro.ro', 50, 80);
     doc.fontSize(11).font('RB').fillColor(GOLD)
        .text(`FACTURA #${String(r.id_rezervare).padStart(6, '0')}`, 400, 35, { align: 'right', width: 145 });
-    doc.fontSize(9).font('R').fillColor('rgba(255,255,255,0.6)')
+    doc.fontSize(9).font('R').fillColor('#BDBECA')
        .text(`Data emiterii: ${fmtD(new Date())}`, 400, 58, { align: 'right', width: 145 })
        .text(`Rezervare #${r.id_rezervare}`, 400, 73, { align: 'right', width: 145 });
 
@@ -65,8 +84,8 @@ const genereazaPDFBuffer = (r) => new Promise((resolve, reject) => {
     doc.fontSize(10).font('RB').fillColor(DARK).text(r.nume_hotel, 310, yH);
     yH += 15;
     doc.fontSize(9).font('R').fillColor(GRAY)
-       .text(r.adresa_hotel + ', ' + r.nume_oras, 310, yH)
-       .text('★'.repeat(r.stele) + ` (${r.stele} stele)`, 310, yH + 13);
+       .text(r.adresa_hotel + ', ' + r.nume_oras, 310, yH);
+    drawHotelStars(doc, 310, yH + 13, r.stele, GOLD);
 
     // Detalii sejur
     y = Math.max(y, yH) + 45;
@@ -107,7 +126,7 @@ const genereazaPDFBuffer = (r) => new Promise((resolve, reject) => {
     y += 10;
     doc.rect(350, y, 195, 28).fill(DARK);
     doc.fontSize(11).font('RB')
-       .fillColor('rgba(255,255,255,0.7)').text('TOTAL:', 360, y + 8)
+       .fillColor('#D3D3DD').text('TOTAL:', 360, y + 8)
        .fillColor(GOLD).text(`${pretTotal.toFixed(2)} RON`, 360, y + 8, { align: 'right', width: 175 });
     y += 45;
 
@@ -151,7 +170,7 @@ const genereazaPDFBuffer = (r) => new Promise((resolve, reject) => {
         ? 'Plata integrala se efectueaza la receptia hotelului la data check-in-ului.'
         : 'Plata a fost efectuata integral online.';
     doc.rect(0, 760, 595, 82).fill(DARK);
-    doc.fontSize(8).font('R').fillColor('rgba(255,255,255,0.4)')
+    doc.fontSize(8).font('R').fillColor('#9293A0')
        .text('Aceasta factura a fost generata automat de platforma HoteluriRo.', 50, 775, { align: 'center', width: 495 })
        .text(footerLine2, 50, 790, { align: 'center', width: 495 });
     doc.fontSize(7).fillColor(GOLD)

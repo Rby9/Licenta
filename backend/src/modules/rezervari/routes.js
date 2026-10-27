@@ -95,13 +95,14 @@ function registerRoutes(app, { db, verificaToken, ADMIN_ROLES, emailTransporter,
                    u.nume_complet, u.email, u.telefon,
                    h.nume_hotel, h.adresa AS adresa_hotel, h.stele,
                    o.nume_oras,
-                   cc.denumire AS tip_camera, cc.pret_pe_noapte
+                   cc.denumire AS tip_camera, COALESCE(gc.pret_pe_noapte,cc.pret_pe_noapte) AS pret_pe_noapte
             FROM Rezervari r
             JOIN Utilizatori u   ON r.id_utilizator = u.id_utilizator
             JOIN Camere c        ON r.id_camera = c.id_camera
             JOIN Categorii_Camere cc ON c.id_categorie = cc.id_categorie
             JOIN Hoteluri h      ON cc.id_hotel = h.id_hotel
             JOIN Orase o         ON h.id_oras = o.id_oras
+            LEFT JOIN Rezervari_Grup_Camere gc ON gc.id_linie_grup=r.id_linie_grup
             WHERE r.id_rezervare = ?
         `;
 
