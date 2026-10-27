@@ -2,10 +2,13 @@
 
 Aplicație web pentru căutarea hotelurilor și gestionarea rezervărilor hoteliere din România.
 
+Proiectul a fost realizat inițial pentru lucrarea de licență. Versiunea acelei etape este păstrată în tagul [licenta-v1.0](https://github.com/Rby9/Licenta/tree/licenta-v1.0). Dezvoltarea ulterioară continuă ca proiect personal, începând cu integrarea asistentului AI pentru explorarea catalogului și pregătirea rezervărilor.
+
 ## Funcționalități
 
 - Catalog de hoteluri cu filtre după oraș, stele, preț, facilități și perioadă.
 - Hartă interactivă cu Leaflet și OpenStreetMap.
+- Asistent de căutare cu conversație AI opțională prin Groq și criterii presetate în aceeași conversație: întrebări despre orașe, hoteluri, facilități și categorii, extragerea criteriilor din text, rezumat de confirmat, rezultate disponibile și informații despre plată, anulare și rambursare.
 - Pagini de hotel cu galerii foto, categorii de camere, disponibilitate și recenzii.
 - Conturi de utilizator, autentificare JWT și resetarea parolei.
 - Rezervări, integrare Stripe, notificări email și generare de documente PDF.
@@ -60,6 +63,18 @@ npm run dev --prefix frontend
 ```
 
 Aplicația este disponibilă la **http://localhost:5173**. API-ul rulează pe **http://127.0.0.1:5001**. În dezvoltare, Vite redirecționează cererile `/api` și `/uploads` către backend.
+
+## Configurarea opțională a asistentului AI
+
+Adaugă în `backend/.env` cheia privată `GROQ_API_KEY` creată în Groq Console și, opțional, `GROQ_MODEL` (implicit `qwen/qwen3.8-27b`, model cu ieșire JSON structurată). Repornește backendul după schimbarea configurației. Cheia nu se introduce în frontend, în conversație sau în Git. Integrarea folosește `fetch` din Node.js, fără un serviciu Python sau SDK suplimentar.
+
+Conversațiile noi încep în română. Mesajele în engleză schimbă răspunsurile și interfața asistentului în engleză; răspunsurile scurte sau numele de orașe păstrează limba curentă. Limba este păstrată în istoricul local. Descrierile și denumirile hotelurilor rămân în limba originală din catalog.
+
+AI-ul extrage criteriile din conversație; backendul validează orașul, perioada, persoanele și sensul bugetului. Conversația este trimisă către Groq doar la trimiterea unui mesaj AI și nu este salvată în MySQL. Panoul se deschide pe toată înălțimea din dreapta (aproximativ un sfert din lățimea desktopului, cu lățime minimă lizibilă), poate fi micșorat, iar istoricul și criteriile au vederi separate. Ultimele zece conversații sunt păstrate în localStorage, separat pentru contul curent sau vizitator, cu opțiune de ștergere din panou. Istoricul nu se sincronizează între dispozitive. La reluare, rezultatele sunt căutate din nou. Nu introduce date personale, parole sau date de card. Limitele planului și politica de date trebuie verificate în propriul cont Groq.
+
+Fără cheie sau în cazul unei erori, criteriile pot fi completate în același panou, fără o interfață separată. Presetele sunt validate de backend fără apel la model. Întrebările uzuale despre catalog sunt recunoscute direct, iar formulările suplimentare pot fi interpretate de AI. Informațiile despre orașe, hoteluri, facilități și categorii provin din interogări SELECT; prețurile de catalog nu confirmă disponibilitatea unui sejur. AI-ul nu execută SQL, nu modifică rezervări și nu procesează plăți. Căutarea integrată acceptă momentan numai adulți într-o singură cameră comună. Solicitările cu copii sau camere multiple sunt recunoscute în rezumat, dar nu sunt trimise către checkout-ul actual, care gestionează o singură cameră. Răspunsurile despre plată/anulare/rambursare sunt controlate de aplicație. După căutare se alege hotelul și o categorie disponibilă, apoi se deschide checkout-ul cu hotelul, categoria, perioada și persoanele completate. Sumarul precizează că este rezervată o singură cameră; plata este confirmată separat de utilizator.
+
+Testele AI folosesc un furnizor simulat și nu consumă cota Groq. Calitatea modelului în română și disponibilitatea contului necesită o verificare separată cu cheia proprie.
 
 ## Inițializarea unei baze noi
 
