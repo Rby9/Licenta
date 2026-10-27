@@ -3,7 +3,7 @@ const { HttpError } = require('./errors');
 const { reservationView } = require('./reservation-view');
 const { integer } = require('./validation');
 
-function createPaymentService({ stripe, bookings, db, config, notify = async () => {} }) {
+function createPaymentService({ stripe, bookings, db, config, notify = async () => {}, groups }) {
     const gateway = () => { if (!stripe) throw new HttpError(503, 'Plățile online nu sunt configurate.'); return stripe; };
     async function checkout(userId, input) {
         const method = input.metoda_plata || 'online_total';
@@ -32,6 +32,7 @@ function createPaymentService({ stripe, bookings, db, config, notify = async () 
         if (typeof sessionId !== 'string' || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) throw new HttpError(400, 'Session ID invalid.');
         const api = gateway();
         const session = await api.checkout.sessions.retrieve(sessionId);
+        if (session.metadata?.booking_version === '2' && groups) return groups.confirm(session, userId);
         const meta = session.metadata || {};
         const owner = integer(meta.id_utilizator, 'Utilizator sesiune');
         if (userId != null && Number(userId) !== owner) throw new HttpError(403, 'Sesiunea de plată aparține altui utilizator.');

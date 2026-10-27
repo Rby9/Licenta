@@ -106,6 +106,7 @@ function createBookingService(pool) {
             const [rows] = await connection.execute('SELECT * FROM Rezervari WHERE id_rezervare=? FOR UPDATE', [reservationId]);
             const reservation = rows[0];
             if (!reservation) throw new HttpError(404, 'Rezervarea nu există.');
+            if (reservation.id_linie_grup) throw new HttpError(409, 'Această cameră aparține unui grup. Gestionează întreaga rezervare de grup.');
             if (userId && Number(reservation.id_utilizator) !== Number(userId)) throw new HttpError(403, 'Acces neautorizat.');
             if (cancellation) {
                 if (reservation.status_rezervare === 'anulata') throw new HttpError(400, 'Rezervarea este deja anulată.');

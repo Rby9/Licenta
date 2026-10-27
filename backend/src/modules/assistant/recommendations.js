@@ -30,7 +30,7 @@ function createRoomRecommendations(db) {
                 .filter(option => option.plans.length).sort((a, b) => a.plans[0].totalCents - b.plans[0].totalCents || Number(a.hotel.id_hotel) - Number(b.hotel.id_hotel));
             const en = language === 'en';
             return { language, criteria: values, nights: analysis.nights, totalHotels: options.length, hotels: options.slice(0, 5),
-                reply: options.length ? (en ? 'These room arrangements fit your group and budget. Review the guests in each room and the whole-stay total. Multiple-room checkout is not available yet; rooms are not held.' : 'Aceste repartizări se încadrează în grupul și bugetul tău. Verifică persoanele din fiecare cameră și totalul sejurului. Checkout-ul pentru mai multe camere nu este disponibil încă; camerele nu sunt blocate.')
+                reply: options.length ? (en ? 'These room arrangements fit your group and budget. Review the guests in each room and the whole-stay total. Choose an arrangement to review and explicitly approve the booking offer; rooms are not held.' : 'Aceste repartizări se încadrează în grupul și bugetul tău. Verifică persoanele din fiecare cameră și totalul sejurului. Alege o repartizare pentru a verifica și aproba explicit oferta de rezervare; camerele nu sunt blocate.')
                     : (en ? 'No room arrangement fits your dates, group and budget. You can change the dates, city or budget.' : 'Nu am găsit o combinație de camere pentru perioada, grupul și bugetul tău. Poți modifica perioada, orașul sau bugetul.') };
         },
     };

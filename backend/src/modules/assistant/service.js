@@ -3,7 +3,7 @@ const { conversationLanguage } = require('./language');
 const { date } = require('../../services/validation');
 
 const englishReplies = {
-    "Verifică rezumatul, apoi caută repartizări în camere pentru întregul grup. Checkout-ul pentru mai multe camere nu este disponibil încă.": "Review the summary, then search for room arrangements for your whole group. Multiple-room checkout is not available yet.",
+    "Verifică rezumatul, apoi caută repartizări în camere pentru întregul grup. Oferta de rezervare trebuie verificată și aprobată explicit de tine.": "Review the summary, then search for room arrangements for your whole group. You must review and explicitly approve the booking offer.",
     "Orașul nu există în catalog. Alege o altă destinație.": "This city is not in the catalog. Choose another destination.",
     "Data introdusă nu este validă. Scrie ziua, luna și anul.": "The date is invalid. Include the day, month and year.",
     "Alege date care nu sunt în trecut.": "Choose dates that are not in the past.",
@@ -103,7 +103,7 @@ function validateExtraction(raw, cities, currentDay = today(), language = 'ro') 
     const reply = raw.intent !== 'search' ? t(replies[raw.intent]) : [...issues,
         raw.clarification && !questions.length ? 'Mai am nevoie de o clarificare: precizează explicit datele, persoanele, bugetul și preferința camerelor.' : '',
         ...questions.slice(0, 2).map(question => question.text),
-        complete ? (supported ? (criteria.room_preference === 'together' ? 'Verifică rezumatul de mai jos, apoi confirmă căutarea pentru o singură cameră.' : 'Verifică rezumatul, apoi caută repartizări în camere pentru întregul grup. Checkout-ul pentru mai multe camere nu este disponibil încă.')
+        complete ? (supported ? (criteria.room_preference === 'together' ? 'Verifică rezumatul de mai jos, apoi confirmă căutarea pentru o singură cameră.' : 'Verifică rezumatul, apoi caută repartizări în camere pentru întregul grup. Oferta de rezervare trebuie verificată și aprobată explicit de tine.')
             : 'Am pregătit criteriile. Politicile pentru copii sunt în curs de implementare; încă nu pot pregăti această rezervare pentru checkout.') : '',
     ].filter(Boolean).map(t).join(' ');
     if (['cities', 'hotels', 'hotel_details', 'capabilities'].includes(raw.intent)) return { kind: 'catalog', catalogRequest: { intent: raw.intent, city: raw.city, hotel: raw.hotel } };

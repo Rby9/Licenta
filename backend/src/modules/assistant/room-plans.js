@@ -56,7 +56,7 @@ function recommendRoomPlans(categories, { adults, preference, nights, budgetCent
         return { kind: index === 0 ? 'cheapest' : 'fewest', roomCount: rooms.length, rooms,
             nightlyCents: candidate.state.cents, totalCents: candidate.state.cents * nights,
             requiresSeparateConsent: preference === 'together' && rooms.length > 1,
-            canCheckout: rooms.length === 1 };
+            canCheckout: !(preference === 'together' && rooms.length > 1) };
     });
 }
 module.exports = { recommendRoomPlans };

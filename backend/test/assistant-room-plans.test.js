@@ -10,7 +10,7 @@ test('repartizare: combină categorii și nu depășește inventarul sau capacit
     assert.equal(plans.length, 1);
     assert.deepEqual(plans[0].rooms.map(room => room.adults), [2, 2, 1]);
     assert.equal(plans[0].totalCents, 75075);
-    assert.equal(plans[0].canCheckout, false);
+    assert.equal(plans[0].canCheckout, true);
     assert.deepEqual(recommendRoomPlans([category(1, 2, 100, 2)], request), []);
     assert.deepEqual(recommendRoomPlans([category(1, 10, 100, 0)], request), []);
 });
@@ -86,10 +86,10 @@ test('recomandări: numai SELECT parametrizat, disponibilitate pe interval și b
     assert.deepEqual(calls[1].params, ['Brașov', '2090-11-13', '2090-11-10']);
     assert.match(calls[1].sql, /NOT EXISTS/);
     assert.match(calls[1].sql, /status_camera='activa'/);
-    assert.match(result.reply, /Checkout-ul pentru mai multe camere nu este disponibil/);
+    assert.match(result.reply, /aproba explicit/);
     const english = await service.search({ ...criteria, budget: 300, budget_unit: 'nightly' }, 'en');
     assert.equal(english.hotels[0].plans[0].totalCents, 90000);
-    assert.match(english.reply, /Multiple-room checkout is not available/);
+    assert.match(english.reply, /explicitly approve/);
 });
 test('recomandări: criteriile incomplete, copiii și orașele necunoscute nu citesc inventarul', async () => {
     const { service, calls } = fixture();

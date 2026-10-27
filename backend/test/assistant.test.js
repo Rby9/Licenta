@@ -219,7 +219,7 @@ test('AI: criteriile complete pentru grupuri permit căutarea, fără promisiune
         const result = validateExtraction({ ...criteria, adults: 5, room_preference }, ['Brașov']);
         assert.equal(result.canSearch, true);
         assert.match(result.reply, /repartizări/);
-        assert.match(result.reply, /Checkout-ul pentru mai multe camere nu este disponibil/);
+        assert.match(result.reply, /aprobată explicit/);
     }
 });
 test('AI HTTP: recomandările nu necesită cheie Groq, validează originea și nu scriu în bază', async t => {

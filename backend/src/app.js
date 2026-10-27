@@ -7,6 +7,8 @@ const { integer } = require('./services/validation');
 const { createUploads } = require('./services/uploads');
 const { createEmailService } = require('./services/email');
 const { createBookingService } = require('./services/bookings');
+const { createGroupCheckout } = require('./services/group-checkout');
+const { createGroupCheckoutRouter } = require('./modules/assistant/checkout-routes');
 const { createPaymentService } = require('./services/payments');
 const { createAssistantRouter } = require('./modules/assistant/routes');
 const { createHoteluriRouter } = require('./modules/hoteluri/routes');
@@ -39,14 +41,16 @@ function createApp(options = {}) {
             sumaAvans: reservation.suma_avans,
         });
     };
-    const payments = createPaymentService({ stripe, bookings, db, config, notify });
-    const dependencies = { db, config, ...auth, ...uploads, ...email, bookings, stripe, payments, notify };
+    const groups = createGroupCheckout({ stripe, db, config, notify });
+    const payments = createPaymentService({ stripe, bookings, db, config, notify, groups });
+    const dependencies = { db, config, ...auth, ...uploads, ...email, bookings, stripe, payments, notify, groups };
     registerWebhook(app, dependencies); // Semnătura Stripe necesită corpul brut, înainte de JSON.
     app.use(express.json({ limit: '1mb' }));
     app.use((req, res, next) => { req.body ??= {}; next(); });
     app.set('json replacer', (_key, value) => typeof value === 'string'
         ? value.replace(/^http:\/\/(?:localhost|127\.0\.0\.1):500[01]\/uploads\//, '/uploads/') : value);
     app.use('/uploads', express.static(uploads.uploadsDir));
+    app.use(createGroupCheckoutRouter({ groups, verificaToken: auth.verificaToken, payments, config }));
     app.use(createHoteluriRouter(db));
     app.use(createAssistantRouter({ db, config, fetchImpl: options.assistantFetch }));
     for (const domain of ['autentificare', 'administrare', 'oferte', 'recenzii']) {
