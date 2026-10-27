@@ -8,6 +8,7 @@ const { createUploads } = require('./services/uploads');
 const { createEmailService } = require('./services/email');
 const { createBookingService } = require('./services/bookings');
 const { createPaymentService } = require('./services/payments');
+const { createAssistantRouter } = require('./modules/assistant/routes');
 const { createHoteluriRouter } = require('./modules/hoteluri/routes');
 const { registerWebhook, registerPayments } = require('./modules/plati/routes');
 const reservationRoutes = require('./modules/rezervari/routes');
@@ -47,6 +48,7 @@ function createApp(options = {}) {
         ? value.replace(/^http:\/\/(?:localhost|127\.0\.0\.1):500[01]\/uploads\//, '/uploads/') : value);
     app.use('/uploads', express.static(uploads.uploadsDir));
     app.use(createHoteluriRouter(db));
+    app.use(createAssistantRouter({ db, config, fetchImpl: options.assistantFetch }));
     for (const domain of ['autentificare', 'administrare', 'oferte', 'recenzii']) {
         require(`./modules/${domain}/routes`).registerRoutes(app, dependencies);
     }

@@ -6,6 +6,7 @@ function runtime(env = process.env) {
     return {
         port: Number(env.PORT || 5001), host: env.HOST || '127.0.0.1',
         siteUrl: siteUrl.replace(/\/$/, ''), jwtSecret: env.JWT_SECRET,
+        groqApiKey: env.GROQ_API_KEY, groqModel: env.GROQ_MODEL || 'qwen/qwen3.8-27b',
         stripeSecret: env.STRIPE_SECRET_KEY, stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
         emailUser: env.EMAIL_USER, emailPass: env.EMAIL_PASS,
         emailFrom: env.EMAIL_FROM || env.EMAIL_USER || 'noreply@example.invalid',
