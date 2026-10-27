@@ -25,3 +25,9 @@ Thumbs.db
 # Browser test artifacts
 playwright-report/
 test-results/
+
+# Private local database backups (never publish)
+/.local-backups/
+
+# Generated PDF examples
+/output/pdf/

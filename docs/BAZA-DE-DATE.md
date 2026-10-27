@@ -22,10 +22,12 @@ erDiagram
 
 Diagrama arată relațiile de domeniu. În schema actuală, unele chei externe acceptă NULL, deci legătura nu este obligatorie în toate înregistrările.
 
-## Cele 13 tabele
+## Tabelele aplicației
 
 | Tabel | Rol |
 | --- | --- |
+| `rezervari_grup` | Oferta aprobată, totalul, plata și statusul comenzii comune |
+| `rezervari_grup_camere` | Categoria, ocuparea și prețul aprobat pentru fiecare cameră |
 | `camere` | Camerele fizice și starea lor |
 | `categorii_camere` | Tipurile de camere, capacitatea și prețul pe noapte |
 | `coduri_reducere` | Codurile promoționale |
@@ -40,7 +42,7 @@ Diagrama arată relațiile de domeniu. În schema actuală, unele chei externe a
 | `rezervari` | Camera, clientul, perioada și informațiile de plată |
 | `utilizatori` | Conturi, roluri și autentificare |
 
-Toate tabelele folosesc InnoDB. Sunt declarate 10 relații prin chei externe. Există unicitate pentru email, numele orașului, codul promoțional și perechea hotel–utilizator pentru recenzii.
+Toate tabelele folosesc InnoDB. Schema inițială are 10 relații principale; checkout-ul comun adaugă legături pentru grupuri și liniile camerelor. Există unicitate pentru email, numele orașului, codul promoțional și perechea hotel–utilizator pentru recenzii.
 
 ## Relațiile declarate
 
@@ -70,3 +72,11 @@ Toate tabelele folosesc InnoDB. Sunt declarate 10 relații prin chei externe. Ex
 - Inițializarea refuză o bază care conține deja tabele. Pentru o bază existentă sunt necesare migrări separate, revizuite și susținute de backup.
 
 Detaliile tranzacțiilor, calculului prețurilor și confirmării Stripe sunt descrise în [arhitectura aplicației](STRUCTURA.md).
+
+## Rezervări de grup
+
+Instalările noi includ tabelele `Rezervari_Grup`, `Rezervari_Grup_Camere` și legătura opțională `Rezervari.id_linie_grup`. Pentru o bază existentă se folosește migrarea separată `backend/database/migrations/001_group_checkout_approval.sql`, după backup și verificare; nu se rulează `db:init` pe o bază existentă. Migrarea nu rescrie rezervările istorice: legătura lor rămâne NULL. DDL-ul MySQL are commit implicit, deci o aplicare întreruptă necesită inspectarea schemei înainte de reluare.
+
+Comanda reține proprietarul, hotelul, intervalul, adulții, totalul, metoda de plată, sesiunea Stripe, hash-ul ofertei și momentul aprobării. Fiecare linie reprezintă o cameră, chiar când mai multe camere au aceeași categorie. Rezervarea efectivă leagă linia de o cameră fizică. Cheile unice pe UUID-ul aprobării, sesiunea Stripe și linia rezervată previn dublurile. Înregistrarea ofertei nu blochează o cameră. Rezervările se inserează sau se anulează împreună, în tranzacție. Relațiile noi folosesc RESTRICT pentru păstrarea istoricului. Sesiunile individuale Stripe rămân pe tabela existentă; pentru grup, sesiunea este pe comandă și câmpul individual rămâne NULL.
+
+Backupurile locale private se păstrează în `.local-backups/`, exclus din Git; conțin date ale aplicației și nu se publică. Fișierele din `uploads/` necesită backup separat.
