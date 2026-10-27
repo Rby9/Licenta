@@ -22,8 +22,8 @@ test('AI: nu inventează vârste, baza bugetului sau preferința camerelor', () 
     assert.match(result.reply, /copii/);
     assert.match(result.reply, /buget/);
 });
-test('AI: camerele multiple și copiii nu sunt trimise într-un checkout pentru o cameră', () => {
-    for (const patch of [{ children: [4] }, { room_preference: 'separate' }, { room_preference: 'cheapest' }]) {
+test('AI: copiii nu sunt trimiși într-un checkout fără politici pentru copii', () => {
+    for (const patch of [{ children: [4] }]) {
         const result = validateExtraction({ ...criteria, ...patch }, ['Brașov']);
         assert.equal(result.complete, true);
         assert.equal(result.canSearch, false);
@@ -212,4 +212,28 @@ test('limbă: cheile JSON ale criteriilor nu schimbă limba după un răspuns sc
         const turns = [{ role: 'user', content: `${prefix} ${data}` }, { role: 'assistant', content: 'Check-in?' }, { role: 'user', content: '2090-11-10' }];
         assert.equal(conversationLanguage(turns, language), language);
     }
+});
+
+test('AI: criteriile complete pentru grupuri permit căutarea, fără promisiune de checkout multiplu', () => {
+    for (const room_preference of ['separate', 'cheapest']) {
+        const result = validateExtraction({ ...criteria, adults: 5, room_preference }, ['Brașov']);
+        assert.equal(result.canSearch, true);
+        assert.match(result.reply, /repartizări/);
+        assert.match(result.reply, /Checkout-ul pentru mai multe camere nu este disponibil/);
+    }
+});
+test('AI HTTP: recomandările nu necesită cheie Groq, validează originea și nu scriu în bază', async t => {
+    const app = await fixture(t, { apiKey: '', dbExecute: async sql => {
+        assert.match(sql, /^SELECT /);
+        return sql.includes('SELECT nume_oras') ? [[{ nume_oras: 'Brașov' }]] : [[]];
+    } });
+    const { intent, clarification, ...values } = criteria;
+    assert.equal(intent, 'search'); assert.equal(clarification, null);
+    const result = await app.request('recommendations', { criteria: values, language: 'en' });
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body.hotels, []);
+    assert.match(result.body.reply, /No room arrangement/);
+    assert.equal((await app.request('recommendations', { criteria: values }, 'https://other.example')).status, 403);
+    assert.equal((await app.request('recommendations', { criteria: values, language: 'fr' })).status, 400);
+    assert.equal((await app.request('recommendations', { criteria: { ...values, children: [4] } })).status, 400);
 });

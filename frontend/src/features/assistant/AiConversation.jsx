@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiRequest } from '../../utils/apiRequest';
 import HotelImage from '../../components/HotelImage';
 import { hotelCover, usesDemoImage, demoImageNote } from '../../utils/demoImages';
+import GroupRecommendations from './GroupRecommendations';
 import { translate, savedLanguage } from './language';
 import { loadConversations, saveConversation, clearConversations } from './history';
 
@@ -15,7 +16,7 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
   const t = (text, values) => translate(text, language, values);
   const money = value => Number(value).toLocaleString(language === 'en' ? 'en-GB' : 'ro-RO', { maximumFractionDigits: 2 });
   const dateLabel = value => value ? (language === 'en' ? new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`)) : value.split('-').reverse().join('.')) : t('neprecizat');
-  const preferences = { together: t('O singură cameră'), separate: t('Camere separate'), cheapest: t('Cea mai ieftină configurație') };
+  const preferences = { together: t('O singură cameră'), separate: t('Camere separate (minimum două)'), cheapest: t('Cea mai ieftină configurație') };
   useEffect(() => { onLanguageChange(language); }, [language, onLanguageChange]);
   const [conversationId, setConversationId] = useState(initial[0]?.id || crypto.randomUUID());
   const [messages, setMessages] = useState(initial[0]?.messages || [{ role: 'assistant', text: welcome }]);
@@ -26,6 +27,7 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
   const [error, setError] = useState('');
   const [enabled, setEnabled] = useState(null);
   const [results, setResults] = useState(null);
+  const [groupResults, setGroupResults] = useState(null);
   const [selection, setSelection] = useState(null);
   const [cities, setCities] = useState([]);
   const [history, setHistory] = useState(initial);
@@ -68,13 +70,13 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
   function restart() {
     requestRef.current?.abort();
     setLanguage('ro'); setConversationId(crypto.randomUUID()); setTurns([]); setMessages([{ role: 'assistant', text: welcome }]);
-    setAnalysis(null); setResults(null); setSelection(null); setInput(''); setError(''); setStatus('idle');
+    setAnalysis(null); setResults(null); setGroupResults(null); setSelection(null); setInput(''); setError(''); setStatus('idle');
   }
 
   function resume(item) {
     requestRef.current?.abort();
     setLanguage(savedLanguage(item)); setConversationId(item.id); setMessages(item.messages); setTurns(item.turns);
-    setAnalysis(null); setResults(null); setSelection(null); setInput(''); setError(''); setStatus('idle'); setView('chat');
+    setAnalysis(null); setResults(null); setGroupResults(null); setSelection(null); setInput(''); setError(''); setStatus('idle'); setView('chat');
   }
 
   async function send(event, preset) {
@@ -84,7 +86,7 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
     const nextTurns = [...turns.slice(-20), { role: 'user', content: text }];
     requestRef.current?.abort();
     const controller = new AbortController(); requestRef.current = controller;
-    setStatus('thinking'); setError(''); setAnalysis(previous => previous ? { ...previous, canSearch: false } : null); setResults(null); setSelection(null);
+    setStatus('thinking'); setError(''); setAnalysis(previous => previous ? { ...previous, canSearch: false } : null); setResults(null); setGroupResults(null); setSelection(null);
     setMessages(previous => previous.at(-1)?.role === 'user' && previous.at(-1).text === text ? previous : [...previous, { role: 'user', text }]);
     try {
       const data = await apiRequest('/api/assistant/chat', { method: 'POST', signal: controller.signal,
@@ -103,7 +105,7 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
     const label = intent === 'cities' ? t('Ce orașe sunt disponibile?') : intent === 'hotels' ? t('Ce hoteluri sunt{location}?', { location: city ? t(' în {city}', { city }) : t(' în catalog') }) : intent === 'capabilities' ? t('Cu ce mă poți ajuta?') : t('Detalii despre {hotel}', { hotel });
     const text = intent === 'cities' ? t('Ce orașe sunt disponibile?') : label;
     const controller = new AbortController(); requestRef.current = controller;
-    setStatus('thinking'); setError(''); setView('chat'); setResults(null); setSelection(null);
+    setStatus('thinking'); setError(''); setView('chat'); setResults(null); setGroupResults(null); setSelection(null);
     setMessages(previous => [...previous, { role: 'user', text }]);
     try {
       const data = await apiRequest('/api/assistant/chat', { method: 'POST', signal: controller.signal,
@@ -121,7 +123,7 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
     if (status !== 'idle') return;
     const values = { ...(analysis?.criteria || empty), ...patch };
     const controller = new AbortController(); requestRef.current = controller;
-    setStatus('thinking'); setError(''); setResults(null); setSelection(null);
+    setStatus('thinking'); setError(''); setResults(null); setGroupResults(null); setSelection(null);
     try {
       const data = await apiRequest('/api/assistant/chat', { method: 'POST', signal: controller.signal,
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ criteria: values, language }) });
@@ -148,14 +150,23 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
   async function search() {
     if (!analysis?.canSearch || status !== 'idle') return;
     const controller = new AbortController(); requestRef.current = controller;
-    setStatus('searching'); setError(''); setResults(null); setSelection(null);
+    setStatus('searching'); setError(''); setResults(null); setGroupResults(null); setSelection(null);
     const criteria = analysis.criteria;
     const params = new URLSearchParams({ oras: criteria.city, checkin: criteria.checkin, checkout: criteria.checkout, guests: criteria.adults, sort: 'pret_asc' });
     if (analysis.nightlyBudget !== null) params.set('pret_max', analysis.nightlyBudget);
     try {
+      const loadPlans = async () => {
+        const recommendations = await apiRequest('/api/assistant/recommendations', { method: 'POST', signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ criteria, language }) });
+        if (controller.signal.aborted) return;
+        setGroupResults(recommendations);
+        setMessages(previous => [...previous, { role: 'assistant', text: recommendations.reply }]);
+      };
+      if (criteria.room_preference !== 'together') { await loadPlans(); return; }
       const data = await apiRequest(`/api/hoteluri/search?${params}`, { signal: controller.signal });
       if (controller.signal.aborted) return;
       if (!Array.isArray(data)) throw new Error(t('Rezultatele nu au putut fi citite.'));
+      if (!data.length) { await loadPlans(); return; }
       setResults(data);
       setMessages(previous => [...previous, { role: 'assistant', text: data.length ? t('Am găsit {count} hoteluri pentru criteriile confirmate. Alege un hotel din lista de mai jos, apoi categoria camerei.', { count: data.length }) : t('Nu am găsit camere pentru aceste criterii. Putem schimba orașul, perioada sau bugetul.') }]);
     } catch (error) { if (!controller.signal.aborted) setError(language === 'en' ? t('Nu am putut finaliza cererea. Reîncearcă.') : error.message); }
@@ -226,7 +237,7 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
         {criteria.children === null && <div className="assistant-actions"><button type="button" disabled={busy} onClick={() => updateCriteria({ children: [] }, t('Fără copii'))}>{t('Fără copii')}</button></div>}
         {!criteria.budget_unit && <div className="assistant-actions">{[['stay', t('Buget pentru tot sejurul')], ['nightly', t('Buget pe noapte')], ['unlimited', t('Fără limită de buget')]].map(([value, label]) => <button key={value} type="button" disabled={busy} onClick={() => updateCriteria({ budget_unit: value }, label)}>{label}</button>)}</div>}
 
-        {analysis.canSearch && <button type="button" onClick={search} disabled={busy}>{t('Confirmă și caută camere')}</button>}
+        {analysis.canSearch && <button type="button" onClick={search} disabled={busy}>{t(criteria.room_preference === 'together' ? 'Confirmă și caută camere' : 'Caută repartizări pentru grup')}</button>}
       </section>}
       {results && <div className="assistant-results">
         <p>{results.length ? t('Alege un hotel, apoi o categorie disponibilă. Nu se încasează bani în conversație.') : t('Nu există camere pentru aceste criterii. Poți modifica perioada, bugetul sau orașul.')}</p>
@@ -241,6 +252,8 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
         </article>)}
         {results.length > 5 && <p>{t('Primele 5 hoteluri, în ordinea prețului.')}</p>}
       </div>}
+      {groupResults && <GroupRecommendations result={groupResults} language={language} onClose={onClose} busy={busy}
+        onSeparate={() => updateCriteria({ room_preference: 'separate' }, t('Camere separate (minimum două)'))} />}
       {selection && <section ref={selectionRef} className="assistant-summary" aria-label={t('Camere de rezervat')}>
         <h3>{t('{hotel} — alege camera', { hotel: selection.hotel.nume_hotel })}</h3>
         {selection.rooms.length === 0 && <p>{t('Nu mai există o cameră potrivită în buget. Reia căutarea sau modifică criteriile.')}</p>}
@@ -278,6 +291,7 @@ export default function AiConversation({ onClose, active, owner, expanded, onTog
     {view === 'criteria' && <section className="assistant-page" aria-label={t('Criterii de cazare')}>
       <p className="assistant-page-intro">{t('Bugetul acoperă toate persoanele și camerele. Verifică perioada și persoanele înainte de căutare.')}</p>
       {error && <p className="assistant-error" role="alert">{error}</p>}
+        <p>{t('Preferința „camere separate” înseamnă minimum două camere. Fiecare cameră primește cel puțin un adult.')}</p>
         <form key={JSON.stringify(criteria)} onSubmit={submitCriteria} className="assistant-criteria-form">
           <label>{t('Oraș')}<select aria-label={t('Oraș')} name="city" defaultValue={criteria.city || ''} required><option value="">{t('Alege orașul')}</option>{cities.map(city => <option key={city.id_oras} value={city.nume_oras}>{city.nume_oras}</option>)}</select></label>
           <label>Check-in<input aria-label="Check-in" name="checkin" type="date" defaultValue={criteria.checkin || ''} required /></label>

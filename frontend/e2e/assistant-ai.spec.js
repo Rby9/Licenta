@@ -177,3 +177,58 @@ test('AI: română inițial, engleză în răspuns/interfață, istoric și reve
   await expect(panel.locator('.assistant-message-assistant')).toContainText('Salut!');
   await expect(panel.getByLabel('Mesajul tău')).toBeVisible();
 });
+
+function groupResult(adults, preference = 'separate', language = 'ro') {
+  const rooms = Array.from({ length: Math.ceil(adults / 2) }, (_, index) => ({ categoryId: 1, name: 'Camera Standard', capacity: 2, adults: Math.min(2, adults - index * 2), nightlyCents: 10000 }));
+  return { language, criteria: { ...analysis.criteria, adults, room_preference: preference }, nights: 3, totalHotels: 1,
+    reply: language === 'en' ? 'Review the room arrangements. Multiple-room checkout is not available yet.' : 'Verifică repartizarea. Checkout-ul pentru mai multe camere nu este disponibil încă.',
+    hotels: [{ hotel: { id_hotel: 1, nume_hotel: 'Hotel Demo', nume_oras: 'Brașov', stele: 4 }, plans: [{ kind: 'cheapest', roomCount: rooms.length, rooms, nightlyCents: rooms.length * 10000, totalCents: rooms.length * 30000, canCheckout: false, requiresSeparateConsent: preference === 'together' }] }] };
+}
+for (const adults of [3, 4, 5]) for (const width of [390, 1440]) test(`AI grup: ${adults} adulți la ${width}px, repartizare și total fără checkout multiplu`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  const { panel, failures } = await openAssistant(page);
+  const result = groupResult(adults);
+  await page.route('**/api/assistant/chat', route => route.fulfill({ json: { ...analysis, criteria: result.criteria, reply: 'Confirmă criteriile pentru grup.' } }));
+  let sent;
+  await page.route('**/api/assistant/recommendations', route => { sent = route.request().postDataJSON(); return route.fulfill({ json: result }); });
+  await send(panel, `Brașov, ${adults} adulți, fără copii, camere separate, 3 nopți, 1000 lei pe sejur`);
+  await panel.getByRole('button', { name: 'Caută repartizări pentru grup' }).click();
+  const region = panel.getByRole('region', { name: 'Repartizări pentru grup' });
+  await expect(region).toContainText(`${Math.ceil(adults / 2)} camere · ${adults} adulți · 3 nopți`);
+  await expect(region).toContainText(`${Math.ceil(adults / 2) * 300} RON total sejur pentru întregul grup`);
+  await expect(region.getByRole('listitem')).toHaveCount(Math.ceil(adults / 2));
+  await expect(region.getByRole('link', { name: /checkout/ })).toHaveCount(0);
+  await expect(region).toContainText('Checkout-ul pentru mai multe camere nu este încă activ');
+  expect(sent.criteria.adults).toBe(adults); expect(sent.criteria.budget_unit).toBe('stay');
+  await page.screenshot({ path: testInfo.outputPath(`group-${adults}-${width}.png`) });
+  await panel.getByRole('button', { name: 'Conversație nouă' }).click();
+  await expect(region).toHaveCount(0);
+  expect(failures).toEqual([]);
+});
+test('AI grup: lipsa unei camere comune oferă alternativa explicită în camere separate', async ({ page }) => {
+  const { panel } = await openAssistant(page);
+  const result = groupResult(3, 'together');
+  await page.route('**/api/assistant/chat', route => route.fulfill({ json: { ...analysis, criteria: result.criteria } }));
+  await page.route('**/api/hoteluri/search?*', route => route.fulfill({ json: [] }));
+  await page.route('**/api/assistant/recommendations', route => route.fulfill({ json: result }));
+  await send(panel, 'Vreau aceeași cameră pentru trei adulți');
+  await panel.getByRole('button', { name: 'Confirmă și caută camere' }).click();
+  await expect(panel.getByText('Grupul nu încape într-o singură cameră disponibilă în buget. Aceasta este o alternativă în camere separate.')).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Accept camere separate' })).toBeVisible();
+  await expect(panel.getByRole('link', { name: /checkout/ })).toHaveCount(0);
+});
+test('AI grup: engleză, alternativă într-o cameră și continuare pe checkout-ul existent', async ({ page }) => {
+  await openAssistant(page);
+  const panel = page.getByRole('dialog');
+  const result = groupResult(5, 'cheapest', 'en');
+  result.hotels[0].plans.push({ kind: 'fewest', roomCount: 1, rooms: [{ categoryId: 2, name: 'Family', capacity: 5, adults: 5, nightlyCents: 40000 }], nightlyCents: 40000, totalCents: 120000, canCheckout: true });
+  await page.route('**/api/assistant/chat', route => route.fulfill({ json: { ...analysis, language: 'en', criteria: result.criteria } }));
+  await page.route('**/api/assistant/recommendations', route => route.fulfill({ json: result }));
+  await send(panel, 'I need rooms for five adults, cheapest arrangement');
+  await panel.getByRole('button', { name: 'Find room arrangements' }).click();
+  const region = panel.getByRole('region', { name: 'Room arrangements for your group' });
+  await expect(region).toContainText('3 rooms · 5 adults · 3 nights');
+  await expect(region).toContainText('1 room · 5 adults · 3 nights');
+  await expect(region).toContainText('1,200 RON whole-stay total for the entire group');
+  await expect(region.getByRole('link', { name: 'Continue to checkout — 1 room' })).toHaveAttribute('href', '/rezervare?hotel_id=1&categorie_id=2&checkin=2090-11-10&checkout=2090-11-13&guests=5&rooms=1');
+});

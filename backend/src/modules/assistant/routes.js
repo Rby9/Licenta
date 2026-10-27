@@ -3,6 +3,7 @@ const express = require('express');
 const { createAssistantService, validateTurns, validateExtraction } = require('./service');
 const { createCatalogAssistant, detectCatalogQuestion } = require('./catalog');
 const { HttpError } = require('../../services/errors');
+const { createRoomRecommendations } = require('./recommendations');
 
 function createAssistantRouter({ db, config, fetchImpl }) {
     const router = express.Router();
@@ -10,6 +11,17 @@ function createAssistantRouter({ db, config, fetchImpl }) {
     const service = createAssistantService({ apiKey: config.groqApiKey, model: config.groqModel, fetchImpl });
     // Limită globală pentru prototipul privat; fără stocare de conversații sau adrese IP.
     let windowStart = Date.now(), used = 0, active = 0;
+    router.post('/api/assistant/recommendations', async (req, res, next) => {
+        const language = req.body?.language || 'ro';
+        try {
+            if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body) || !['ro', 'en'].includes(language)) throw new HttpError(400, 'Criterii invalide.');
+            if (req.get('origin') && req.get('origin') !== config.siteUrl) throw new HttpError(403, 'Origine nepermisă.');
+            res.json(await createRoomRecommendations(db).search(req.body.criteria, language));
+        } catch (error) {
+            if (language === 'en' && error instanceof HttpError) error.message = error.status === 403 ? 'This request is not allowed.' : 'Please check the city, dates, adult guests, room preference and budget. Child policies are not supported yet.';
+            next(error);
+        }
+    });
     router.get('/api/assistant/status', (req, res) => res.json({ enabled: service.enabled }));
     router.post('/api/assistant/chat', async (req, res, next) => {
         const language = conversationLanguage(req.body?.turns, req.body?.language);

@@ -1,5 +1,21 @@
 // Textele interfeței sunt controlate; datele hotelurilor rămân cele din catalog.
 const english = {
+  "cameră": "room", "camere": "rooms", "adult": "adult", "adulți": "adults", "noapte": "night", "nopți": "nights",
+  "capacitate {capacity}": "capacity {capacity}",
+  "Repartizări pentru grup": "Room arrangements for your group",
+  "Toate camerele la același hotel": "All rooms at the same hotel",
+  "Costul cel mai mic": "Lowest cost",
+  "Cele mai puține camere": "Fewest rooms",
+  "{price} RON / noapte pentru întregul grup": "{price} RON / night for the entire group",
+  "{price} RON total sejur pentru întregul grup": "{price} RON whole-stay total for the entire group",
+  "Grupul nu încape într-o singură cameră disponibilă în buget. Aceasta este o alternativă în camere separate.": "Your group does not fit in one available room within budget. This is an alternative in separate rooms.",
+  "Accept camere separate": "Accept separate rooms",
+  "Recomandare disponibilă pentru consultare. Checkout-ul pentru mai multe camere nu este încă activ.": "This recommendation is for review. Multiple-room checkout is not available yet.",
+  "Camerele nu sunt blocate. Disponibilitatea și prețul se verifică din nou înainte de rezervare.": "Rooms are not held. Availability and price are checked again before booking.",
+  "Camere separate (minimum două)": "Separate rooms (at least two)",
+  "Caută repartizări pentru grup": "Find room arrangements",
+  "Preferința „camere separate” înseamnă minimum două camere. Fiecare cameră primește cel puțin un adult.": "“Separate rooms” means at least two rooms. Each room has at least one adult.",
+
   "Căutare cazare": "Accommodation search",
   "O singură cameră": "One shared room",
   "Camere separate": "Separate rooms",

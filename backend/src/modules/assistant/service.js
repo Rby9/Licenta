@@ -3,6 +3,7 @@ const { conversationLanguage } = require('./language');
 const { date } = require('../../services/validation');
 
 const englishReplies = {
+    "Verifică rezumatul, apoi caută repartizări în camere pentru întregul grup. Checkout-ul pentru mai multe camere nu este disponibil încă.": "Review the summary, then search for room arrangements for your whole group. Multiple-room checkout is not available yet.",
     "Orașul nu există în catalog. Alege o altă destinație.": "This city is not in the catalog. Choose another destination.",
     "Data introdusă nu este validă. Scrie ziua, luna și anul.": "The date is invalid. Include the day, month and year.",
     "Alege date care nu sunt în trecut.": "Choose dates that are not in the past.",
@@ -21,7 +22,7 @@ const englishReplies = {
     "Te pot ajuta cu o căutare de cazare sau cu explicații despre rezervare, plată, anulare și rambursare. Nu pot confirma informații despre hoteluri care nu există în catalog.": "I can help you search for accommodation or explain bookings, payments, cancellations and refunds. I cannot confirm information about hotels outside the catalog.",
     "Mai am nevoie de o clarificare: precizează explicit datele, persoanele, bugetul și preferința camerelor.": "Please clarify the dates, guests, budget and room preference.",
     "Verifică rezumatul de mai jos, apoi confirmă căutarea pentru o singură cameră.": "Review the summary below, then confirm the search for one room.",
-    "Am pregătit criteriile. Recomandările pentru mai multe camere și politicile pentru copii sunt în curs de implementare; încă nu pot pregăti această rezervare pentru checkout.": "Your criteria are ready. Multiple-room recommendations and child policies are still being implemented; I cannot prepare this booking for checkout yet."
+    "Am pregătit criteriile. Politicile pentru copii sunt în curs de implementare; încă nu pot pregăti această rezervare pentru checkout.": "Your criteria are ready. Child policies are still being implemented; I cannot prepare this booking for checkout yet."
 };
 
 const intents = ['search', 'booking', 'payment', 'cancel', 'refund', 'change', 'other', 'cities', 'hotels', 'hotel_details', 'capabilities'];
@@ -89,8 +90,8 @@ function validateExtraction(raw, cities, currentDay = today(), language = 'ro') 
     if (!criteria.room_preference) questions.push({ key: 'room_preference', text: 'Preferați aceeași cameră, camere separate sau varianta cea mai ieftină?' });
     const complete = !issues.length && !questions.length && !raw.clarification;
     const nightlyBudget = criteria.budget_unit === 'unlimited' ? null : criteria.budget_unit === 'stay' && nights ? Math.floor(criteria.budget * 100 / nights) / 100 : criteria.budget;
-    // Checkout-ul actual rezervă o cameră. Nu pretindem suport pentru grupuri/copii înainte de extinderea lui.
-    const supported = complete && criteria.children.length === 0 && criteria.room_preference === 'together';
+    // Recomandările pentru adulți pot include mai multe camere; checkout-ul rămâne pentru o cameră.
+    const supported = complete && criteria.children.length === 0;
     const replies = {
         booking: 'Te ajut să alegi cazarea. Rezervarea este confirmată de tine în checkout, după autentificare și verificarea camerelor, perioadei și totalului.',
         payment: 'Poți plăti la cazare, integral online sau un avans online de 30%, cu restul la cazare. Checkout-ul arată totalul, suma de achitat acum și restul. Tu autorizezi plata în Stripe; nu trimite date de card aici.',
@@ -102,8 +103,8 @@ function validateExtraction(raw, cities, currentDay = today(), language = 'ro') 
     const reply = raw.intent !== 'search' ? t(replies[raw.intent]) : [...issues,
         raw.clarification && !questions.length ? 'Mai am nevoie de o clarificare: precizează explicit datele, persoanele, bugetul și preferința camerelor.' : '',
         ...questions.slice(0, 2).map(question => question.text),
-        complete ? (supported ? 'Verifică rezumatul de mai jos, apoi confirmă căutarea pentru o singură cameră.'
-            : 'Am pregătit criteriile. Recomandările pentru mai multe camere și politicile pentru copii sunt în curs de implementare; încă nu pot pregăti această rezervare pentru checkout.') : '',
+        complete ? (supported ? (criteria.room_preference === 'together' ? 'Verifică rezumatul de mai jos, apoi confirmă căutarea pentru o singură cameră.' : 'Verifică rezumatul, apoi caută repartizări în camere pentru întregul grup. Checkout-ul pentru mai multe camere nu este disponibil încă.')
+            : 'Am pregătit criteriile. Politicile pentru copii sunt în curs de implementare; încă nu pot pregăti această rezervare pentru checkout.') : '',
     ].filter(Boolean).map(t).join(' ');
     if (['cities', 'hotels', 'hotel_details', 'capabilities'].includes(raw.intent)) return { kind: 'catalog', catalogRequest: { intent: raw.intent, city: raw.city, hotel: raw.hotel } };
     return { language, criteria, nights, nightlyBudget, complete, canSearch: supported && raw.intent === 'search', reply,
