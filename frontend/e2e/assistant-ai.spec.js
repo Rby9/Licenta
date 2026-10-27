@@ -198,7 +198,7 @@ for (const adults of [3, 4, 5]) for (const width of [390, 1440]) test(`AI grup: 
   await expect(region).toContainText(`${Math.ceil(adults / 2) * 300} RON total sejur pentru întregul grup`);
   await expect(region.getByRole('listitem')).toHaveCount(Math.ceil(adults / 2));
   await expect(region.getByRole('link', { name: /checkout/ })).toHaveCount(0);
-  await expect(region).toContainText('Checkout-ul pentru mai multe camere nu este încă activ');
+  await expect(region.getByRole('link', { name: 'Verifică oferta și aprobă rezervarea' })).toHaveAttribute('href', /\/rezervare\/grup\?/);
   expect(sent.criteria.adults).toBe(adults); expect(sent.criteria.budget_unit).toBe('stay');
   await page.screenshot({ path: testInfo.outputPath(`group-${adults}-${width}.png`) });
   await panel.getByRole('button', { name: 'Conversație nouă' }).click();
@@ -230,5 +230,5 @@ test('AI grup: engleză, alternativă într-o cameră și continuare pe checkout
   await expect(region).toContainText('3 rooms · 5 adults · 3 nights');
   await expect(region).toContainText('1 room · 5 adults · 3 nights');
   await expect(region).toContainText('1,200 RON whole-stay total for the entire group');
-  await expect(region.getByRole('link', { name: 'Continue to checkout — 1 room' })).toHaveAttribute('href', '/rezervare?hotel_id=1&categorie_id=2&checkin=2090-11-10&checkout=2090-11-13&guests=5&rooms=1');
+  await expect(region.getByRole('link', { name: 'Review the offer and approve the booking' })).toHaveCount(2);
 });

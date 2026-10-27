@@ -686,7 +686,7 @@ export default function ProfilUtilizator() {
                   <div style={s.infoLabel}>Total / Plată</div>
                   <div>
                     <div style={s.infoValueGold}>
-                      {Math.round(r.pret_total)} RON
+                      {Number(r.pret_total).toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RON
                       <span style={{ fontFamily: "'Jost',sans-serif", fontSize: "0.72rem", color: "rgba(26,26,46,0.35)", fontWeight: 400, marginLeft: "4px" }}>
                         / {nopti} {nopti === 1 ? "noapte" : "nopți"}
                       </span>
@@ -708,10 +708,10 @@ export default function ProfilUtilizator() {
               {/* Footer */}
               <div className="reservation-footer" style={s.cardFoot}>
                 <span style={s.creataLa}>
-                  Rezervare #{r.id_rezervare} · creată pe {formatData(r.data_crearii)}
+                  Rezervare #{r.id_rezervare}{r.id_linie_grup ? " · cameră dintr-un grup" : ""} · creată pe {formatData(r.data_crearii)}
                 </span>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  {poateAnula(r) && (
+                  {poateAnula(r) && !r.id_linie_grup && (
                     <button
                       style={s.anulareBtn(r.id_rezervare)}
                       onMouseEnter={() => setHovBtn(`an-${r.id_rezervare}`)}
@@ -721,6 +721,7 @@ export default function ProfilUtilizator() {
                       Anulează
                     </button>
                   )}
+                  {r.id_linie_grup && <Link to={`/rezervare/grup?line_id=${r.id_linie_grup}`}>Gestionează întregul grup</Link>}
                   {r.status_rezervare !== "anulata" && (
                     <button
                       style={s.facturaBtn(r.id_rezervare)}
@@ -748,6 +749,8 @@ export default function ProfilUtilizator() {
         </>
         )}
       </div>
+
+      <p style={{ textAlign: "center", padding: "16px" }}><Link to="/rezervare/grup">Vezi toate comenzile de grup și plățile în așteptare</Link></p>
 
       {/* ── DIALOG CONFIRMARE ANULARE ────────────────────────────────────── */}
       {confirmAnulare && (

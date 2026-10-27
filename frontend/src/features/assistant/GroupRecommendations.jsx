@@ -20,8 +20,8 @@ export default function GroupRecommendations({ result, language, onClose, busy, 
           <strong>{t('{price} RON total sejur pentru întregul grup', { price: money(plan.totalCents) })}</strong>
           {plan.requiresSeparateConsent && <><p>{t('Grupul nu încape într-o singură cameră disponibilă în buget. Aceasta este o alternativă în camere separate.')}</p>
             <button type="button" disabled={busy} onClick={onSeparate}>{t('Accept camere separate')}</button></>}
-          {plan.canCheckout ? <Link reloadDocument to={`/rezervare?${new URLSearchParams({ hotel_id: hotel.id_hotel, categorie_id: plan.rooms[0].categoryId, checkin: criteria.checkin, checkout: criteria.checkout, guests: criteria.adults, rooms: '1' })}`} onClick={onClose}>{t('Continuă la checkout — 1 cameră')}</Link>
-            : <p className="assistant-note">{t('Recomandare disponibilă pentru consultare. Checkout-ul pentru mai multe camere nu este încă activ.')}</p>}
+          {!plan.requiresSeparateConsent && <Link to={`/rezervare/grup?${new URLSearchParams({ hotel_id: hotel.id_hotel, checkin: criteria.checkin, checkout: criteria.checkout, rooms: JSON.stringify(plan.rooms.map(room => ({ categoryId: room.categoryId, adults: room.adults }))), lang: language })}`} onClick={onClose}>{t('Verifică oferta și aprobă rezervarea')}</Link>}
+
         </section>)}
       </div>
     </article>)}

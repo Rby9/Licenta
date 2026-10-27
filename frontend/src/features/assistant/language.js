@@ -1,5 +1,6 @@
 // Textele interfeței sunt controlate; datele hotelurilor rămân cele din catalog.
 const english = {
+  "Verifică oferta și aprobă rezervarea": "Review the offer and approve the booking",
   "cameră": "room", "camere": "rooms", "adult": "adult", "adulți": "adults", "noapte": "night", "nopți": "nights",
   "capacitate {capacity}": "capacity {capacity}",
   "Repartizări pentru grup": "Room arrangements for your group",

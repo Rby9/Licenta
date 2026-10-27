@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test, before, after } from 'node:test';
 import { Linter } from 'eslint';
 import { jsxBindings } from '../eslint-jsx.js';
@@ -8,15 +11,17 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-let vite;
+let vite, cacheDir;
 before(async () => {
+  cacheDir = await mkdtemp(join(tmpdir(), 'hoteluriro-unit-vite-'));
   vite = await createServer({
+    cacheDir,
     root: fileURLToPath(new URL('..', import.meta.url)),
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] },
   });
 });
-after(async () => { await vite?.close(); });
+after(async () => { await vite?.close(); if (cacheDir) await rm(cacheDir, { recursive: true, force: true }); });
 const load = path => vite.ssrLoadModule(`/src/${path}`);
 const render = (Component, props) => renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Component, props)));
 

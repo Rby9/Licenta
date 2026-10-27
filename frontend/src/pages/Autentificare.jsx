@@ -1,4 +1,5 @@
 import { hotelDemoImages } from '../utils/demoImages';
+import { localReturnPath } from '../utils/navigation';
 import { saveSession } from '../utils/session';
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
@@ -10,9 +11,7 @@ export default function Autentificare() {
   const location = useLocation();
 
   // Citim returnTo din: state (router) → sessionStorage → fallback "/"
-  const returnTo = location.state?.from
-    || sessionStorage.getItem("returnTo")
-    || "/";
+  const [returnTo] = useState(() => localReturnPath(location.state?.from || sessionStorage.getItem("returnTo"), window.location.origin));
 
   // ── State ──────────────────────────────────────────────────────────────
   const [tab, setTab]         = useState("login");

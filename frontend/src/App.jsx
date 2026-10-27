@@ -12,6 +12,7 @@ const Hoteluri = lazy(() => import("./pages/Hoteluri"));
 const HotelDetalii = lazy(() => import("./pages/HotelDetalii"));
 const Autentificare = lazy(() => import("./pages/Autentificare"));
 const Rezervare = lazy(() => import("./pages/Rezervare"));
+const RezervareGrup = lazy(() => import("./pages/RezervareGrup"));
 const RezervareSucces = lazy(() => import("./pages/RezervareSucces"));
 const RezervareAnulat = lazy(() => import("./pages/RezervareAnulat"));
 const ProfilUtilizator = lazy(() => import("./pages/ProfilUtilizator"));
@@ -57,6 +58,7 @@ function AnimatedRoutes() {
         <Route path="/hoteluri/:id"  element={<HotelDetalii />} />
         <Route path="/autentificare" element={<Autentificare />} />
         <Route path="/rezervare"          element={<Rezervare />} />
+        <Route path="/rezervare/grup" element={<RezervareGrup />} />
         <Route path="/rezervare/succes"   element={<RezervareSucces />} />
         <Route path="/rezervare/anulat"   element={<RezervareAnulat />} />
         <Route path="/profil"           element={<ProfilUtilizator />} />
