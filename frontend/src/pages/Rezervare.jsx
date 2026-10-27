@@ -451,6 +451,8 @@ export default function Rezervare() {
             </div>
 
             <div className="booking-card-body" style={s.cardBody}>
+              <div style={s.row}><span style={s.rowLabel}>Număr camere</span><span style={s.rowValue}>1 cameră</span></div>
+              <div style={s.row}><span style={s.rowLabel}>Persoane cazate</span><span style={s.rowValue}>{Number(searchParams.get("guests") || 1)} persoane în aceeași cameră</span></div>
               <div style={s.row}><span style={s.rowLabel}>Tip cameră</span><span style={s.rowValue}>{categorie.denumire}</span></div>
               <div style={s.row}><span style={s.rowLabel}>Check-in</span><span style={s.rowValue}>{checkin ? formatData(checkin) : "—"}</span></div>
               <div style={s.row}><span style={s.rowLabel}>Check-out</span><span style={s.rowValue}>{checkout ? formatData(checkout) : "—"}</span></div>

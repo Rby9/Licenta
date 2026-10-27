@@ -5,6 +5,7 @@ import { ToastProvider } from "./components/Toast";
 import Footer    from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import ScrollToTopBtn from "./components/ScrollToTopBtn";
+import Assistant from "./features/Assistant";
 
 const Home = lazy(() => import("./pages/Home"));
 const Hoteluri = lazy(() => import("./pages/Hoteluri"));
@@ -80,6 +81,7 @@ export default function App() {
         <Navbar />
         <AnimatedRoutes />
         <Footer />
+        <Assistant />
       </ToastProvider>
     </BrowserRouter>
   );
